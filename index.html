@@ -163,6 +163,25 @@
             margin-bottom: 1rem;
             text-align: center;
         }
+        #toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #10b981;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            pointer-events: none;
+        }
+        #toast.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center">
@@ -429,6 +448,9 @@
         </div>
     </div>
 
+    <!-- Toast Notification -->
+    <div id="toast" role="alert">Salvataggio riuscito!</div>
+
     <script type="module">
         // Importa le librerie Firebase necessarie
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -470,13 +492,14 @@
         const vaseTypeInput = document.getElementById('vaseType');
         const priceValueInput = document.getElementById('priceValue');
         const supplierNameInput = document.getElementById('supplierName');
-        const eanCodeInput = document.getElementById('eanCode'); // Nuovo campo EAN
+        const eanCodeInput = document.getElementById('eanCode');
         const notesInput = document.getElementById('notes');
-        const priceReportTable = document.getElementById('priceReportTable').querySelector('tbody'); // Seleziona il tbody
+        const priceReportTable = document.getElementById('priceReportTable').querySelector('tbody');
         const confirmationDialog = document.getElementById('confirmationDialog');
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
         const validationError = document.getElementById('validationError');
+        const toast = document.getElementById('toast');
 
         const bouquetFlag = document.getElementById('bouquetFlag');
         const plantFlag = document.getElementById('plantFlag');
@@ -575,6 +598,25 @@
             }
         });
 
+        // Funzione per mostrare la notifica "Salvataggio riuscito"
+        function showToast() {
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Funzione per resettare i campi del prodotto
+        function resetProductFields() {
+            itemNameInput.value = '';
+            stemsCountInput.value = '';
+            vaseTypeInput.value = '';
+            priceValueInput.value = '';
+            supplierNameInput.value = '';
+            eanCodeInput.value = '';
+            notesInput.value = '';
+        }
+
         // Aggiungi un nuovo prezzo
         saveBtn.addEventListener('click', async () => {
             if (!authReady) {
@@ -628,7 +670,7 @@
                     vaso: isPlant ? vaseType : '',
                     prezzo: price,
                     fornitore: supplierName,
-                    eanCode: eanCode, // Aggiunto il codice EAN
+                    eanCode: eanCode,
                     note: notes,
                     mazzo: isBouquet,
                     pianta: isPlant,
@@ -637,18 +679,8 @@
                 };
                 await addDoc(collection(db, "prices"), newPrice);
                 console.log("Dati aggiunti con successo.");
-                
-                itemNameInput.value = '';
-                stemsCountInput.value = '';
-                vaseTypeInput.value = '';
-                priceValueInput.value = '';
-                supplierNameInput.value = '';
-                eanCodeInput.value = '';
-                notesInput.value = '';
-                isBouquet = false;
-                isPlant = false;
-                updateFlagState();
-
+                showToast();
+                resetProductFields();
             } catch (e) {
                 console.error("Errore nell'aggiunta del documento: ", e);
             }
@@ -666,7 +698,7 @@
                 const querySnapshot = await getDocs(pricesCollection);
                 
                 let csvContent = "data:text/csv;charset=utf-8,";
-                csvContent += "Catena,Negozio,Tipologia,Articolo,N° Steli,Vaso,Prezzo,Fornitore,Codice a Barre (EAN),Note\n"; // Header CSV aggiornato
+                csvContent += "Catena,Negozio,Tipologia,Articolo,N° Steli,Vaso,Prezzo,Fornitore,Codice a Barre (EAN),Note\n";
 
                 querySnapshot.forEach(doc => {
                     const data = doc.data();
@@ -682,15 +714,10 @@
                 link.click();
                 document.body.removeChild(link);
 
+                // Resetta TUTTO per il nuovo negozio
                 storeChainInput.value = '';
                 storeNameInput.value = '';
-                itemNameInput.value = '';
-                stemsCountInput.value = '';
-                vaseTypeInput.value = '';
-                priceValueInput.value = '';
-                supplierNameInput.value = '';
-                eanCodeInput.value = '';
-                notesInput.value = '';
+                resetProductFields();
                 isBouquet = false;
                 isPlant = false;
                 updateFlagState();
@@ -718,7 +745,7 @@
                 // Ordina per timestamp, dal più recente al più vecchio
                 prices.sort((a, b) => b.timestamp - a.timestamp);
 
-                priceReportTable.innerHTML = ''; // Svuota il contenitore della tabella
+                priceReportTable.innerHTML = '';
                 
                 prices.forEach(price => {
                     const type = price.mazzo ? 'Mazzo' : 'Pianta';
