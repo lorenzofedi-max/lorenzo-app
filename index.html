@@ -1,821 +1,760 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rilevamento Prezzi</title>
-    <!-- Aggiunti per la PWA -->
-    <link rel="manifest" href="manifest.json">
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./service-worker.js').then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          }, err => {
-            console.log('ServiceWorker registration failed: ', err);
-          });
-        });
-      }
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-        }
-        .container {
-            max-width: 95%;
-            margin: auto;
-            padding: 1.5rem;
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        .price-input {
-            width: 100%;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            border: 1px solid #d1d5db;
-            outline: none;
-            transition: border-color 0.2s;
-            font-size: 1rem;
-        }
-        .price-input:focus {
-            border-color: #3b82f6;
-        }
-        .dialog {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .dialog-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            text-align: center;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
-            max-width: 80%;
-            transform: scale(0.8);
-            transition: transform 0.2s ease-in-out;
-        }
-        .dialog.show .dialog-content {
-            transform: scale(1);
-        }
-        .button {
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
-            border-radius: 0.75rem;
-            transition: background-color 0.2s, transform 0.2s;
-        }
-        .button:active {
-            transform: scale(0.95);
-        }
-        .flag-option {
-            cursor: pointer;
-            padding: 0.75rem;
-            border-radius: 0.75rem;
-            background-color: transparent;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3.5rem;
-        }
-        .flag-option.active {
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-        .icon-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 3rem;
-        }
-        @media (max-width: 640px) {
-            .icon-container {
-                gap: 2rem;
-            }
-        }
-        /* Nuovi stili per la vera tabella */
-        .report-table-container {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 1rem;
-        }
-        .report-table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: #fff;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .report-table th, .report-table td {
-            padding: 1rem;
-            text-align: left;
-            white-space: nowrap;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .report-table th {
-            background-color: #f3f4f6;
-            font-weight: 600;
-            color: #4b5563;
-        }
-        .report-table tr:last-child td {
-            border-bottom: none;
-        }
-        .delete-btn-cell {
-            text-align: center;
-            width: 50px; /* Larghezza fissa per il pulsante */
-        }
-        .delete-btn {
-            background-color: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 50%;
-            transition: background-color 0.2s;
-        }
-        .delete-btn:hover {
-            background-color: #fca5a5;
-        }
-        .delete-btn svg {
-            color: #ef4444;
-            transition: color 0.2s;
-        }
-        .price-cell {
-            font-weight: 600;
-            color: #16a34a; /* verde scuro */
-        }
-        .error-message {
-            color: #ef4444;
-            font-size: 0.875rem;
-            margin-top: -1rem;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        #toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #10b981;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            font-weight: 600;
-            z-index: 2000;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            pointer-events: none;
-        }
-        #toast.show {
-            opacity: 1;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rilevamento Prezzi</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json"/>
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").then(
+          (registration) => {
+            console.log("ServiceWorker registration successful with scope:", registration.scope);
+          },
+          (err) => {
+            console.log("ServiceWorker registration failed:", err);
+          }
+        );
+      });
+    }
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+    .container { max-width: 95%; margin: auto; padding: 1.5rem; }
+    .form-group { margin-bottom: 1.5rem; }
+    .price-input { width: 100%; padding: .75rem; border-radius: .5rem; border: 1px solid #d1d5db; outline: none; transition: border-color .2s; font-size: 1rem; }
+    .price-input:focus { border-color: #3b82f6; }
+    .dialog { display:none; position:fixed; inset:0; background-color:rgba(0,0,0,.5); justify-content:center; align-items:center; z-index:1000; }
+    .dialog-content { background:#fff; padding:2rem; border-radius:1rem; text-align:center; box-shadow:0 10px 15px rgba(0,0,0,.2); max-width:80%; transform:scale(.8); transition:transform .2s ease-in-out; }
+    .dialog.show .dialog-content { transform:scale(1); }
+    .button { padding:.75rem 1.5rem; font-weight:600; border-radius:.75rem; transition: background-color .2s, transform .2s; }
+    .button:active { transform: scale(.95); }
+    .flag-option { cursor:pointer; padding:.75rem; border-radius:.75rem; background:transparent; transition: transform .2s, box-shadow .2s; display:flex; align-items:center; justify-content:center; font-size:3.5rem; }
+    .flag-option.active { transform:scale(1.1); box-shadow:0 4px 12px rgba(0,0,0,.2); }
+    .icon-container { display:flex; justify-content:center; align-items:center; gap:3rem; }
+    @media (max-width:640px){ .icon-container{ gap:2rem; } }
+    .report-table-container{ width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:1rem; }
+    .report-table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border-radius:.75rem; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,.1); }
+    .report-table th,.report-table td{ padding:1rem; text-align:left; white-space:nowrap; }
+    .report-table th{ background:#f3f4f6; font-weight:600; color:#4b5563; }
+    .report-table tbody tr{ transition: background-color .2s ease-in-out; }
+    .report-table tbody tr:hover{ background:#f9fafb; }
+    .report-table tbody tr td{ border-bottom:1px solid #e5e7eb; }
+    .report-table tbody tr:last-child td{ border-bottom:none; }
+    .delete-btn-cell{ text-align:center; width:50px; }
+    .delete-btn{ background:transparent; border:none; cursor:pointer; padding:.5rem; border-radius:50%; transition:background-color .2s; }
+    .delete-btn:hover{ background:#fca5a5; }
+    .delete-btn svg{ color:#ef4444; transition: color .2s; }
+    .price-cell{ font-weight:600; color:#16a34a; }
+    .error-message{ color:#ef4444; font-size:.875rem; margin-top:-1rem; margin-bottom:1rem; text-align:center; }
+    #toast{ position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:#10b981; color:#fff; padding:.75rem 1.5rem; border-radius:.75rem; box-shadow:0 4px 12px rgba(0,0,0,.2); font-weight:600; z-index:2000; opacity:0; transition:opacity .3s ease-in-out; pointer-events:none; }
+    #toast.show{ opacity:1; }
+
+    /* Overlay scanner */
+    .scanner-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:3000; }
+    .scanner-overlay.show{ display:flex; }
+    .scanner-content{ position:relative; max-width:92vw; max-height:82vh; border-radius:1rem; overflow:hidden; box-shadow:0 0 24px rgba(0,0,0,.6); }
+    .scanner-video{ display:block; width:100%; height:auto; max-height:82vh; object-fit:cover; background:#000; }
+    .scanner-reticle{
+      position:absolute; inset:0; pointer-events:none;
+      box-sizing:border-box;
+    }
+    /* Mirino: rettangolo centrale con bordo e angoli */
+    .reticle-box{
+      position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+      width:min(70vw, 520px); height:min(34vw, 240px);
+      border:3px solid rgba(59,130,246,.9); border-radius:16px;
+      box-shadow:0 0 0 9999px rgba(0,0,0,0.35) inset;
+    }
+    .reticle-corner{
+      position:absolute; width:28px; height:28px; border:4px solid rgba(59,130,246,1);
+    }
+    .corner-tl{ left:-2px; top:-2px; border-right:none; border-bottom:none; border-radius:12px 0 0 0; }
+    .corner-tr{ right:-2px; top:-2px; border-left:none; border-bottom:none; border-radius:0 12px 0 0; }
+    .corner-bl{ left:-2px; bottom:-2px; border-right:none; border-top:none; border-radius:0 0 0 12px; }
+    .corner-br{ right:-2px; bottom:-2px; border-left:none; border-top:none; border-radius:0 0 12px 0; }
+    .scanner-close{
+      position:absolute; top:.75rem; right:.75rem;
+      background:rgba(17,24,39,.7); color:#fff; border:none; border-radius:.75rem;
+      padding:.5rem .75rem; display:flex; align-items:center; gap:.5rem; cursor:pointer;
+      backdrop-filter: blur(4px);
+    }
+    .scanner-hint{
+      position:absolute; left:50%; transform:translateX(-50%);
+      bottom:.5rem; color:#e5e7eb; font-weight:600; font-size:.95rem;
+      background:rgba(17,24,39,.5); padding:.35rem .75rem; border-radius:.5rem;
+      backdrop-filter: blur(2px);
+    }
+  </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center">
-    <div class="container mt-8 p-6 bg-white rounded-xl shadow-lg w-full md:max-w-3xl">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Rilevamento Prezzi</h1>
+  <div class="container mt-8 p-6 bg-white rounded-xl shadow-lg w-full md:max-w-3xl">
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Rilevamento Prezzi</h1>
 
-        <div class="mb-6 space-y-6">
-            <!-- Catena e Negozio -->
-            <div class="flex flex-col sm:flex-row gap-6">
-                <div class="form-group flex-1">
-                    <label for="storeChain" class="block text-gray-700 font-medium mb-1">Catena</label>
-                    <input list="storeChainsList" id="storeChain" class="price-input" placeholder="Seleziona o digita una catena" required>
-                    <datalist id="storeChainsList">
-                        <option value="Aldi"></option>
-                        <option value="Alleanza 3.0"></option>
-                        <option value="Bricocenter"></option>
-                        <option value="Bricofer"></option>
-                        <option value="Brico Io"></option>
-                        <option value="Brico Ok"></option>
-                        <option value="Carrefour"></option>
-                        <option value="Cfadda"></option>
-                        <option value="Conad"></option>
-                        <option value="Coop Etruria"></option>
-                        <option value="Coop FI"></option>
-                        <option value="Esselunga"></option>
-                        <option value="Eurospin"></option>
-                        <option value="IKEA"></option>
-                        <option value="Leroy Merlin"></option>
-                        <option value="Lidl"></option>
-                        <option value="OBI"></option>
-                        <option value="Pam"></option>
-                        <option value="Tigros"></option>
-                    </datalist>
-                    <!-- Elenco piante per Pianta -->
-                    <datalist id="plantList">
-                        <option value="Agrumi"></option>
-                        <option value="Anthurium"></option>
-                        <option value="Begonia"></option>
-                        <option value="Bougainvillea"></option>
-                        <option value="Calathea"></option>
-                        <option value="Cactus"></option>
-                        <option value="Camelia"></option>
-                        <option value="Ciclamino"></option>
-                        <option value="Cipresso"></option>
-                        <option value="Edera"></option>
-                        <option value="Ficus"></option>
-                        <option value="Gelsomino"></option>
-                        <option value="Geranio"></option>
-                        <option value="Lavanda"></option>
-                        <option value="Limone"></option>
-                        <option value="Magnolia"></option>
-                        <option value="Mandevilla"></option>
-                        <option value="Monstera"></option>
-                        <option value="Ortensia"></option>
-                        <option value="Palma"></option>
-                        <option value="Pino"></option>
-                        <option value="Pothos"></option>
-                        <option value="Rose"></option>
-                        <option value="Stella di Natale"></option>
-                        <option value="Succulente"></option>
-                        <option value="Ulivo"></option>
-                        <option value="Zamioculcas"></option>
-                    </datalist>
-                    <!-- Elenco diametri vaso per Pianta -->
-                    <datalist id="vaseDiameterList">
-                        <option value="3"></option>
-                        <option value="4"></option>
-                        <option value="5"></option>
-                        <option value="6"></option>
-                        <option value="7"></option>
-                        <option value="8"></option>
-                        <option value="9"></option>
-                        <option value="10"></option>
-                        <option value="11"></option>
-                        <option value="12"></option>
-                        <option value="13"></option>
-                        <option value="14"></option>
-                        <option value="15"></option>
-                        <option value="16"></option>
-                        <option value="17"></option>
-                        <option value="18"></option>
-                        <option value="19"></option>
-                        <option value="20"></option>
-                        <option value="21"></option>
-                        <option value="22"></option>
-                        <option value="23"></option>
-                        <option value="24"></option>
-                        <option value="25"></option>
-                        <option value="26"></option>
-                        <option value="27"></option>
-                        <option value="28"></option>
-                        <option value="29"></option>
-                        <option value="30"></option>
-                    </datalist>
-                    <!-- Nuovo elenco di fiori recisi per Mazzo -->
-                    <datalist id="cutFlowersList">
-                        <option value="Alstroemerie"></option>
-                        <option value="Amarilli"></option>
-                        <option value="Anemoni"></option>
-                        <option value="Anthurium"></option>
-                        <option value="Calle"></option>
-                        <option value="Crisantemi"></option>
-                        <option value="Fiori recisi"></option>
-                        <option value="Fresie"></option>
-                        <option value="Garofani"></option>
-                        <option value="Gerbere"></option>
-                        <option value="Girasoli"></option>
-                        <option value="Gipsophila"></option>
-                        <option value="Gladioli"></option>
-                        <option value="Iris"></option>
-                        <option value="Lilium"></option>
-                        <option value="Lisianthus"></option>
-                        <option value="Orchidee Cymbidium"></option>
-                        <option value="Orchidee Dendrobium"></option>
-                        <option value="Peonie"></option>
-                        <option value="Ranuncoli"></option>
-                        <option value="Rose"></option>
-                        <option value="Rose solidal"></option>
-                        <option value="Ruscus"></option>
-                        <option value="Solidago"></option>
-                        <option value="Strelitzie"></option>
-                        <option value="Tulipani"></option>
-                    </datalist>
-                    <!-- Nuovo elenco di numeri per N° Steli -->
-                    <datalist id="stemsList">
-                        <option value="1"></option>
-                        <option value="3"></option>
-                        <option value="5"></option>
-                        <option value="7"></option>
-                        <option value="9"></option>
-                        <option value="10"></option>
-                        <option value="12"></option>
-                        <option value="15"></option>
-                        <option value="20"></option>
-                        <option value="25"></option>
-                    </datalist>
-                </div>
-                <div class="form-group flex-1">
-                    <label for="storeName" class="block text-gray-700 font-medium mb-1">Negozio</label>
-                    <input type="text" id="storeName" class="price-input" placeholder="Digitare nome/luogo del punto vendita" required>
-                </div>
-            </div>
-            
-            <hr class="border-t border-gray-300 my-4">
+    <div class="mb-6 space-y-6">
+      <!-- Catena e Negozio -->
+      <div class="flex flex-col sm:flex-row gap-6">
+        <div class="form-group flex-1">
+          <label for="storeChain" class="block text-gray-700 font-medium mb-1">Catena</label>
+          <input list="storeChainsList" id="storeChain" class="price-input" placeholder="Seleziona o digita una catena" required>
+          <datalist id="storeChainsList">
+            <option value="Aldi"></option>
+            <option value="Alleanza 3.0"></option>
+            <option value="Bricocenter"></option>
+            <option value="Bricofer"></option>
+            <option value="Brico Io"></option>
+            <option value="Brico Ok"></option>
+            <option value="Carrefour"></option>
+            <option value="Cfadda"></option>
+            <option value="Conad"></option>
+            <option value="Coop Etruria"></option>
+            <option value="Coop FI"></option>
+            <option value="Esselunga"></option>
+            <option value="Eurospin"></option>
+            <option value="IKEA"></option>
+            <option value="Leroy Merlin"></option>
+            <option value="Lidl"></option>
+            <option value="OBI"></option>
+            <option value="Pam"></option>
+            <option value="Tigros"></option>
+          </datalist>
 
-            <!-- Mazzo e Pianta -->
-            <div class="icon-container mb-4">
-                <div class="flex flex-col items-center gap-2">
-                    <div id="bouquetFlag" class="flag-option">💐</div>
-                    <p class="text-sm font-medium text-gray-700">Mazzo</p>
-                </div>
-                <div class="flex flex-col items-center gap-2">
-                    <div id="plantFlag" class="flag-option">🪴</div>
-                    <p class="text-sm font-medium text-gray-700">Pianta</p>
-                </div>
-            </div>
+          <!-- Elenco piante per Pianta -->
+          <datalist id="plantList">
+            <option value="Agrumi"></option>
+            <option value="Anthurium"></option>
+            <option value="Begonia"></option>
+            <option value="Bougainvillea"></option>
+            <option value="Calathea"></option>
+            <option value="Cactus"></option>
+            <option value="Camelia"></option>
+            <option value="Ciclamino"></option>
+            <option value="Cipresso"></option>
+            <option value="Edera"></option>
+            <option value="Ficus"></option>
+            <option value="Gelsomino"></option>
+            <option value="Geranio"></option>
+            <option value="Lavanda"></option>
+            <option value="Limone"></option>
+            <option value="Magnolia"></option>
+            <option value="Mandevilla"></option>
+            <option value="Monstera"></option>
+            <option value="Ortensia"></option>
+            <option value="Palma"></option>
+            <option value="Pino"></option>
+            <option value="Scindapsus"></option>
+            <option value="Rose"></option>
+            <option value="Stella di Natale"></option>
+            <option value="Succulente"></option>
+            <option value="Ulivo"></option>
+            <option value="Zamioculcas"></option>
+          </datalist>
 
-            <!-- Articolo -->
-            <div class="flex flex-col sm:flex-row gap-6">
-                <div class="form-group flex-1">
-                    <label for="itemName" class="block text-gray-700 font-medium mb-1">Articolo</label>
-                    <input type="text" id="itemName" class="price-input" placeholder="Seleziona o digita un articolo" required>
-                </div>
-            </div>
-            
-            <!-- Campi condizionali per Steli e Vaso -->
-            <div id="typeSpecificFields" class="flex flex-col sm:flex-row gap-6 hidden">
-                <div id="stemsGroup" class="form-group flex-1 hidden">
-                    <label for="stemsCount" class="block text-gray-700 font-medium mb-1">N° Steli</label>
-                    <input type="number" list="stemsList" id="stemsCount" class="price-input" placeholder="Seleziona o digita il numero" required>
-                </div>
-                <div id="vaseGroup" class="form-group flex-1 hidden">
-                    <label for="vaseType" class="block text-gray-700 font-medium mb-1">Vaso</label>
-                    <input type="text" id="vaseType" class="price-input" placeholder="Seleziona o digita un vaso" required>
-                </div>
-            </div>
+          <!-- Elenco diametri vaso per Pianta -->
+          <datalist id="vaseDiameterList">
+            <option value="3"></option><option value="4"></option><option value="5"></option><option value="6"></option>
+            <option value="7"></option><option value="8"></option><option value="9"></option><option value="10"></option>
+            <option value="11"></option><option value="12"></option><option value="13"></option><option value="14"></option>
+            <option value="15"></option><option value="16"></option><option value="17"></option><option value="18"></option>
+            <option value="19"></option><option value="20"></option><option value="21"></option><option value="22"></option>
+            <option value="23"></option><option value="24"></option><option value="25"></option><option value="26"></option>
+            <option value="27"></option><option value="28"></option><option value="29"></option><option value="30"></option>
+          </datalist>
 
-            <!-- Prezzo, Fornitore e Codice a Barre -->
-            <div class="flex flex-col sm:flex-row gap-6">
-                 <div class="form-group flex-1">
-                    <label for="priceValue" class="block text-gray-700 font-medium mb-1">Prezzo</label>
-                    <input type="number" step="0.01" id="priceValue" class="price-input" placeholder="Digitare il prezzo" required>
-                </div>
-                <div class="form-group flex-1">
-                    <label for="supplierName" class="block text-gray-700 font-medium mb-1">Fornitore</label>
-                    <input list="supplierList" id="supplierName" class="price-input" placeholder="Seleziona o digita un fornitore">
-                    <datalist id="supplierList">
-                        <option value="Eurofresh"></option>
-                        <option value="Pagano"></option>
-                        <option value="Baldi"></option>
-                        <option value="PD Plants"></option>
-                        <option value="Procoflora"></option>
-                        <option value="Global Plant"></option>
-                    </datalist>
-                </div>
-                <div class="form-group flex-1">
-                    <label for="eanCode" class="block text-gray-700 font-medium mb-1">Codice a Barre (EAN)</label>
-                    <input type="text" id="eanCode" class="price-input" placeholder="Inserisci il codice EAN">
-                </div>
-            </div>
-           
-            
-            <!-- Note -->
-            <div class="form-group">
-                <label for="notes" class="block text-gray-700 font-medium mb-1">Note</label>
-                <textarea id="notes" class="price-input h-24 resize-none" placeholder="Aggiungere note, se necessario"></textarea>
-            </div>
-            <p id="validationError" class="error-message hidden">Si prega di compilare tutti i campi obbligatori.</p>
+          <!-- Elenco fiori recisi per Mazzo -->
+          <datalist id="cutFlowersList">
+            <option value="Alstroemerie"></option>
+            <option value="Amarilli"></option>
+            <option value="Anemoni"></option>
+            <option value="Anthurium"></option>
+            <option value="Calle"></option>
+            <option value="Crisantemi"></option>
+            <option value="Fresie"></option>
+            <option value="Garofani"></option>
+            <option value="Gerbere"></option>
+            <option value="Girasoli"></option>
+            <option value="Gipsophila"></option>
+            <option value="Gladioli"></option>
+            <option value="Iris"></option>
+            <option value="Lilium"></option>
+            <option value="Lisianthus"></option>
+            <option value="Orchidee Cymbidium"></option>
+            <option value="Orchidee Dendrobium"></option>
+            <option value="Peonie"></option>
+            <option value="Ranuncoli"></option>
+            <option value="Rose"></option>
+            <option value="Rose solidal"></option>
+            <option value="Ruscus"></option>
+            <option value="Solidago"></option>
+            <option value="Strelitzie"></option>
+            <option value="Tulipani"></option>
+          </datalist>
+
+          <!-- Elenco numeri per N° Steli -->
+          <datalist id="stemsList">
+            <option value="1"></option><option value="3"></option><option value="5"></option><option value="7"></option>
+            <option value="9"></option><option value="10"></option><option value="12"></option><option value="15"></option>
+            <option value="20"></option><option value="25"></option>
+          </datalist>
         </div>
-        
-        <!-- Pulsanti Salva e Camera -->
-        <div class="mb-6 flex flex-col sm:flex-row gap-4">
-            <button id="cameraScanBtn" class="bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors flex-1">
-                Acquisizione EAN
+
+        <div class="form-group flex-1">
+          <label for="storeName" class="block text-gray-700 font-medium mb-1">Negozio</label>
+          <input type="text" id="storeName" class="price-input" placeholder="Digitare nome/luogo del punto vendita" required>
+        </div>
+      </div>
+
+      <hr class="border-t border-gray-300 my-4"/>
+
+      <!-- Mazzo e Pianta -->
+      <div class="icon-container mb-4">
+        <div class="flex flex-col items-center gap-2">
+          <div id="bouquetFlag" class="flag-option">💐</div>
+          <p class="text-sm font-medium text-gray-700">Mazzo</p>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div id="plantFlag" class="flag-option">🪴</div>
+          <p class="text-sm font-medium text-gray-700">Pianta</p>
+        </div>
+      </div>
+
+      <!-- Articolo -->
+      <div class="flex flex-col sm:flex-row gap-6">
+        <div class="form-group flex-1">
+          <label for="itemName" class="block text-gray-700 font-medium mb-1">Articolo</label>
+          <input type="text" id="itemName" class="price-input" placeholder="Seleziona o digita un articolo" required>
+        </div>
+      </div>
+
+      <!-- Campi condizionali -->
+      <div id="typeSpecificFields" class="flex flex-col sm:flex-row gap-6 hidden">
+        <div id="stemsGroup" class="form-group flex-1 hidden">
+          <label for="stemsCount" class="block text-gray-700 font-medium mb-1">N° Steli</label>
+          <input type="number" list="stemsList" id="stemsCount" class="price-input" placeholder="Seleziona o digita il numero">
+        </div>
+        <div id="vaseGroup" class="form-group flex-1 hidden">
+          <label for="vaseType" class="block text-gray-700 font-medium mb-1">Vaso</label>
+          <input type="text" id="vaseType" class="price-input" placeholder="Seleziona o digita un vaso">
+        </div>
+      </div>
+
+      <!-- Prezzo, Fornitore e EAN -->
+      <div class="flex flex-col sm:flex-row gap-6">
+        <div class="form-group flex-1">
+          <label for="priceValue" class="block text-gray-700 font-medium mb-1">Prezzo</label>
+          <input type="number" step="0.01" id="priceValue" class="price-input" placeholder="Digitare il prezzo" required>
+        </div>
+        <div class="form-group flex-1">
+          <label for="supplierName" class="block text-gray-700 font-medium mb-1">Fornitore</label>
+          <input list="supplierList" id="supplierName" class="price-input" placeholder="Seleziona o digita un fornitore">
+          <datalist id="supplierList">
+            <option value="Eurofresh"></option>
+            <option value="Pagano"></option>
+            <option value="Baldi"></option>
+            <option value="PD Plants"></option>
+            <option value="Procoflora"></option>
+            <option value="Global Plant"></option>
+          </datalist>
+        </div>
+        <div class="form-group flex-1">
+          <label for="eanCode" class="block text-gray-700 font-medium mb-1">Codice a Barre (EAN)</label>
+          <div class="flex gap-2">
+            <input type="text" id="eanCode" class="price-input flex-1" placeholder="Inserisci o scansiona il codice EAN">
+            <button id="cameraScanBtn" class="bg-gray-600 text-white font-semibold px-3 rounded-lg shadow-md hover:bg-gray-700 transition-colors flex items-center justify-center" title="Scansiona con fotocamera">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h2l2-3h10l2 3h2a2 2 0 012 2v9a2 2 0 01-2 2H3a2 2 0 01-2-2V9a2 2 0 012-2z"/>
+                <circle cx="12" cy="13" r="3" />
+              </svg>
             </button>
-            <button id="saveBtn" class="bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex-1">
-                Salva
-            </button>
+          </div>
         </div>
+      </div>
 
-        <hr class="border-t border-gray-300 my-8">
-
-        <div class="mt-8">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold text-gray-700">Anteprima Dati</h2>
-                <button id="exportCsvBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors">
-                    Invia Dati
-                </button>
-            </div>
-            <!-- Sezione per la vera tabella di anteprima -->
-            <div class="report-table-container">
-                <table id="priceReportTable" class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Catena</th>
-                            <th>Negozio</th>
-                            <th>Tipologia</th>
-                            <th>Articolo</th>
-                            <th>N° Steli</th>
-                            <th>Vaso</th>
-                            <th>Prezzo</th>
-                            <th>Fornitore</th>
-                            <th>Codice a Barre (EAN)</th>
-                            <th>Note</th>
-                            <th class="delete-btn-cell"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Le righe verranno inserite qui dal JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+      <!-- Note -->
+      <div class="form-group">
+        <label for="notes" class="block text-gray-700 font-medium mb-1">Note</label>
+        <textarea id="notes" class="price-input h-24 resize-none" placeholder="Aggiungere note, se necessario"></textarea>
+      </div>
+      <p id="validationError" class="error-message hidden">Si prega di compilare tutti i campi obbligatori.</p>
     </div>
 
-    <!-- Confirmation Dialog -->
-    <div id="confirmationDialog" class="dialog">
-        <div class="dialog-content">
-            <p class="text-xl mb-4 font-medium">Sei sicuro di voler eliminare questo elemento?</p>
-            <div class="flex justify-center gap-4">
-                <button id="confirmDeleteBtn" class="button bg-red-500 text-white hover:bg-red-600">Elimina</button>
-                <button id="cancelDeleteBtn" class="button bg-gray-300 text-gray-800 hover:bg-gray-400">Annulla</button>
-            </div>
-        </div>
+    <!-- Pulsanti principali -->
+    <div class="mb-6 flex flex-col sm:flex-row gap-4">
+      <button id="saveBtn" class="bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex-1">Salva</button>
+      <button id="exportCsvBtn" class="bg-green-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors flex-1">Invia Dati</button>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" role="alert">Salvataggio riuscito!</div>
+    <hr class="border-t border-gray-300 my-8"/>
 
-    <script type="module">
-        // Importa le librerie Firebase necessarie
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <div class="mt-8">
+      <h2 class="text-2xl font-semibold text-gray-700 mb-4">Anteprima Dati</h2>
+      <div class="report-table-container">
+        <table id="priceReportTable" class="report-table">
+          <thead>
+            <tr>
+              <th>Catena</th>
+              <th>Negozio</th>
+              <th>Tipologia</th>
+              <th>Articolo</th>
+              <th>N° Steli</th>
+              <th>Vaso</th>
+              <th>Prezzo</th>
+              <th>Fornitore</th>
+              <th>Codice a Barre (EAN)</th>
+              <th>Note</th>
+              <th class="delete-btn-cell"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
-        // La tua configurazione Firebase (copiata dal tuo progetto)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBmATva-xbp7zQK2PydbpRhU9-LJFUuUd8",
-            authDomain: "rilevamento-prezzi.firebaseapp.com",
-            projectId: "rilevamento-prezzi",
-            storageBucket: "rilevamento-prezzi.firebasestorage.app",
-            messagingSenderId: "926435516536",
-            appId: "1:926435516536:web:8f8f752d80dcb5fca90d8d"
-        };
-        
-        // Inizializza Firebase e Firestore
-        let app, db, auth;
+  <!-- Dialog conferma -->
+  <div id="confirmationDialog" class="dialog">
+    <div class="dialog-content">
+      <p class="text-xl mb-4 font-medium">Sei sicuro di voler eliminare questo elemento?</p>
+      <div class="flex justify-center gap-4">
+        <button id="confirmDeleteBtn" class="button bg-red-500 text-white hover:bg-red-600">Elimina</button>
+        <button id="cancelDeleteBtn" class="button bg-gray-300 text-gray-800 hover:bg-gray-400">Annulla</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overlay scanner -->
+  <div id="scannerOverlay" class="scanner-overlay">
+    <div class="scanner-content">
+      <video id="scannerVideo" class="scanner-video" autoplay muted playsinline></video>
+      <div class="scanner-reticle">
+        <div class="reticle-box">
+          <div class="reticle-corner corner-tl"></div>
+          <div class="reticle-corner corner-tr"></div>
+          <div class="reticle-corner corner-bl"></div>
+          <div class="reticle-corner corner-br"></div>
+        </div>
+        <div class="scanner-hint">Allinea il codice a barre nel riquadro</div>
+      </div>
+      <button id="scannerClose" class="scanner-close" title="Chiudi">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Chiudi
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" role="alert">Salvataggio riuscito!</div>
+
+  <script type="module">
+    // Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, onSnapshot, query,
+      deleteDoc, doc, getDocs, setLogLevel, where, orderBy, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBmATva-xbp7zQK2PydbpRhU9-LJFUuUd8",
+      authDomain: "rilevamento-prezzi.firebaseapp.com",
+      projectId: "rilevamento-prezzi",
+      storageBucket: "rilevamento-prezzi.firebasestorage.app",
+      messagingSenderId: "926435516536",
+      appId: "1:926435516536:web:8f8f752d80dcb5fca90d8d"
+    };
+
+    let app, db, auth;
+    try {
+      app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      auth = getAuth(app);
+      setLogLevel("debug");
+    } catch (error) {
+      console.error("Errore nell'inizializzazione di Firebase:", error);
+    }
+
+    let userId = null;
+    let authReady = false;
+
+    // UI refs
+    const saveBtn = document.getElementById("saveBtn");
+    const exportCsvBtn = document.getElementById("exportCsvBtn");
+    const cameraScanBtn = document.getElementById("cameraScanBtn");
+    const storeChainInput = document.getElementById("storeChain");
+    const storeNameInput = document.getElementById("storeName");
+    const itemNameInput = document.getElementById("itemName");
+    const stemsCountInput = document.getElementById("stemsCount");
+    const vaseTypeInput = document.getElementById("vaseType");
+    const priceValueInput = document.getElementById("priceValue");
+    const supplierNameInput = document.getElementById("supplierName");
+    const eanCodeInput = document.getElementById("eanCode");
+    const notesInput = document.getElementById("notes");
+    const priceReportTable = document.getElementById("priceReportTable").querySelector("tbody");
+    const confirmationDialog = document.getElementById("confirmationDialog");
+    const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+    const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+    const validationError = document.getElementById("validationError");
+    const toast = document.getElementById("toast");
+
+    const bouquetFlag = document.getElementById("bouquetFlag");
+    const plantFlag = document.getElementById("plantFlag");
+    const stemsGroup = document.getElementById("stemsGroup");
+    const vaseGroup = document.getElementById("vaseGroup");
+    const typeSpecificFields = document.getElementById("typeSpecificFields");
+    let isBouquet = false;
+    let isPlant = false;
+
+    let itemToDeleteId = null;
+
+    // Flags
+    bouquetFlag.addEventListener("click", () => { isBouquet = true; isPlant = false; updateFlagState(); });
+    plantFlag.addEventListener("click", () => { isPlant = true; isBouquet = false; updateFlagState(); });
+
+    function updateFlagState() {
+      typeSpecificFields.classList.remove("hidden");
+      if (isBouquet) {
+        bouquetFlag.classList.add("active");
+        plantFlag.classList.remove("active");
+        stemsGroup.classList.remove("hidden");
+        vaseGroup.classList.add("hidden");
+        itemNameInput.setAttribute("list", "cutFlowersList");
+        vaseTypeInput.removeAttribute("list");
+      } else if (isPlant) {
+        plantFlag.classList.add("active");
+        bouquetFlag.classList.remove("active");
+        vaseGroup.classList.remove("hidden");
+        stemsGroup.classList.add("hidden");
+        itemNameInput.setAttribute("list", "plantList");
+        vaseTypeInput.setAttribute("list", "vaseDiameterList");
+      } else {
+        bouquetFlag.classList.remove("active");
+        plantFlag.classList.remove("active");
+        stemsGroup.classList.add("hidden");
+        vaseGroup.classList.add("hidden");
+        typeSpecificFields.classList.add("hidden");
+        itemNameInput.removeAttribute("list");
+        vaseTypeInput.removeAttribute("list");
+      }
+    }
+
+    // Reset SOLO campi prodotto (post-salvataggio)
+    function resetProductFields() {
+      itemNameInput.value = "";
+      stemsCountInput.value = "";
+      vaseTypeInput.value = "";
+      priceValueInput.value = "";
+      supplierNameInput.value = "";
+      eanCodeInput.value = "";
+      notesInput.value = "";
+      validationError.classList.add("hidden");
+
+      // Mantieni visibilità coerente con la tipologia
+      if (isBouquet) {
+        typeSpecificFields.classList.remove("hidden");
+        stemsGroup.classList.remove("hidden");
+        vaseGroup.classList.add("hidden");
+        itemNameInput.setAttribute("list", "cutFlowersList");
+        vaseTypeInput.removeAttribute("list");
+      } else if (isPlant) {
+        typeSpecificFields.classList.remove("hidden");
+        vaseGroup.classList.remove("hidden");
+        stemsGroup.classList.add("hidden");
+        itemNameInput.setAttribute("list", "plantList");
+        vaseTypeInput.setAttribute("list", "vaseDiameterList");
+      }
+      itemNameInput.focus();
+    }
+
+    // Dialog conferma
+    function showConfirmationDialog(docId) {
+      itemToDeleteId = docId;
+      confirmationDialog.style.display = "flex";
+      setTimeout(() => confirmationDialog.classList.add("show"), 10);
+    }
+    function hideConfirmationDialog() {
+      confirmationDialog.classList.remove("show");
+      setTimeout(() => { confirmationDialog.style.display = "none"; itemToDeleteId = null; }, 200);
+    }
+    confirmDeleteBtn.addEventListener("click", async () => {
+      if (itemToDeleteId) {
         try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            setLogLevel('Debug');
+          await deleteDoc(doc(db, "prices", itemToDeleteId));
+          console.log("Documento eliminato con successo!");
         } catch (error) {
-            console.error("Errore nell'inizializzazione di Firebase:", error);
+          console.error("Errore durante l'eliminazione del documento:", error);
         }
+      }
+      hideConfirmationDialog();
+    });
+    cancelDeleteBtn.addEventListener("click", hideConfirmationDialog);
 
-        let userId = null;
-        let authReady = false;
+    // Toast
+    function showToast() {
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
 
-        // Elementi UI
-        const saveBtn = document.getElementById('saveBtn');
-        const exportCsvBtn = document.getElementById('exportCsvBtn');
-        const cameraScanBtn = document.getElementById('cameraScanBtn');
-        const storeChainInput = document.getElementById('storeChain');
-        const storeNameInput = document.getElementById('storeName');
-        const itemNameInput = document.getElementById('itemName');
-        const stemsCountInput = document.getElementById('stemsCount');
-        const vaseTypeInput = document.getElementById('vaseType');
-        const priceValueInput = document.getElementById('priceValue');
-        const supplierNameInput = document.getElementById('supplierName');
-        const eanCodeInput = document.getElementById('eanCode');
-        const notesInput = document.getElementById('notes');
-        const priceReportTable = document.getElementById('priceReportTable').querySelector('tbody');
-        const confirmationDialog = document.getElementById('confirmationDialog');
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-        const validationError = document.getElementById('validationError');
-        const toast = document.getElementById('toast');
+    // Escape CSV
+    const csvEscape = (val) => {
+      const s = (val ?? "").toString();
+      return `"${s.replace(/"/g, '""')}"`;
+    };
 
-        const bouquetFlag = document.getElementById('bouquetFlag');
-        const plantFlag = document.getElementById('plantFlag');
-        const stemsGroup = document.getElementById('stemsGroup');
-        const vaseGroup = document.getElementById('vaseGroup');
-        const typeSpecificFields = document.getElementById('typeSpecificFields');
-        let isBouquet = false;
-        let isPlant = false;
+    // Salva (svuota solo i campi prodotto dopo salvataggio riuscito)
+    saveBtn.addEventListener("click", async () => {
+      validationError.classList.add("hidden");
+      if (!authReady) { console.error("L'autenticazione non è ancora pronta."); return; }
 
-        let itemToDeleteId = null;
+      const storeChain = storeChainInput.value.trim();
+      const storeName  = storeNameInput.value.trim();
+      const itemName   = itemNameInput.value.trim();
+      const stemsCount = stemsCountInput.value.trim();
+      const vaseType   = vaseTypeInput.value.trim();
+      const price      = parseFloat(priceValueInput.value);
+      const supplierName = supplierNameInput.value.trim();
+      const eanCode    = eanCodeInput.value.trim();
+      const notes      = notesInput.value.trim();
 
-        // Gestione delle icone flag
-        bouquetFlag.addEventListener('click', () => {
-            isBouquet = true;
-            isPlant = false;
-            updateFlagState();
+      if (!storeChain || !storeName || !itemName || isNaN(price) || (!isBouquet && !isPlant)) {
+        validationError.textContent = "Si prega di compilare Catena, Negozio, Articolo, Prezzo e selezionare il tipo di prodotto.";
+        validationError.classList.remove("hidden"); return;
+      }
+      if (isBouquet && !stemsCount) { validationError.textContent = "Si prega di inserire il numero di Steli."; validationError.classList.remove("hidden"); return; }
+      if (isPlant && !vaseType)     { validationError.textContent = "Si prega di inserire il tipo di Vaso.";  validationError.classList.remove("hidden"); return; }
+      if (!supplierName && !eanCode){ validationError.textContent = "Compila almeno Fornitore o Codice a Barre (EAN)."; validationError.classList.remove("hidden"); return; }
+
+      try {
+        const newPrice = {
+          catena: storeChain,
+          negozio: storeName,
+          articolo: itemName,
+          nSteli: isBouquet ? stemsCount : "",
+          vaso: isPlant ? vaseType : "",
+          prezzo: price,
+          fornitore: supplierName,
+          eanCode: eanCode,
+          note: notes,
+          mazzo: isBouquet,
+          pianta: isPlant,
+          timestamp: serverTimestamp(),
+          userId: userId
+        };
+        await addDoc(collection(db, "prices"), newPrice);
+        showToast();
+        resetProductFields();
+      } catch (e) {
+        console.error("Errore nell'aggiunta del documento:", e);
+      }
+    });
+
+    // Export CSV (azzera anche Catena/Negozio e la tipologia)
+    exportCsvBtn.addEventListener("click", async () => {
+      if (!authReady) { console.error("L'autenticazione non è ancora pronta."); return; }
+      try {
+        const qUser = query(
+          collection(db, "prices"),
+          where("userId", "==", userId),
+          orderBy("timestamp", "desc")
+        );
+        const querySnapshot = await getDocs(qUser);
+
+        let csvContent = "\uFEFFCatena,Negozio,Tipologia,Articolo,N° Steli,Vaso,Prezzo,Fornitore,Codice a Barre (EAN),Note\n";
+        querySnapshot.forEach((d) => {
+          const data = d.data();
+          const tipologia = data.mazzo ? "Mazzo" : (data.pianta ? "Pianta" : "");
+          const row = [
+            csvEscape(data.catena),
+            csvEscape(data.negozio),
+            csvEscape(tipologia),
+            csvEscape(data.articolo),
+            csvEscape(data.nSteli || ""),
+            csvEscape(data.vaso || ""),
+            (data.prezzo ?? "").toString().replace(",", "."),
+            csvEscape(data.fornitore || ""),
+            csvEscape(data.eanCode || ""),
+            csvEscape(data.note || "")
+          ].join(",") + "\n";
+          csvContent += row;
         });
 
-        plantFlag.addEventListener('click', () => {
-            isPlant = true;
-            isBouquet = false;
-            updateFlagState();
-        });
-        
-        function updateFlagState() {
-            itemNameInput.value = '';
-            typeSpecificFields.classList.remove('hidden');
-            
-            if (isBouquet) {
-                bouquetFlag.classList.add('active');
-                plantFlag.classList.remove('active');
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.add('hidden');
-                vaseTypeInput.value = '';
-                itemNameInput.setAttribute('list', 'cutFlowersList');
-                vaseTypeInput.removeAttribute('list');
-            } else if (isPlant) {
-                plantFlag.classList.add('active');
-                bouquetFlag.classList.remove('active');
-                vaseGroup.classList.remove('hidden');
-                stemsGroup.classList.add('hidden');
-                stemsCountInput.value = '';
-                itemNameInput.setAttribute('list', 'plantList');
-                vaseTypeInput.setAttribute('list', 'vaseDiameterList');
-            } else {
-                bouquetFlag.classList.remove('active');
-                plantFlag.classList.remove('active');
-                stemsGroup.classList.add('hidden');
-                vaseGroup.classList.add('hidden');
-                typeSpecificFields.classList.add('hidden');
-                stemsCountInput.value = '';
-                vaseTypeInput.value = '';
-                itemNameInput.removeAttribute('list');
-                vaseTypeInput.removeAttribute('list');
-            }
-        }
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "rilevamento_prezzi.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-        // Funzione per mostrare il dialogo di conferma
-        function showConfirmationDialog(docId) {
-            itemToDeleteId = docId;
-            confirmationDialog.style.display = 'flex';
-            setTimeout(() => {
-                confirmationDialog.classList.add('show');
-            }, 10);
-        }
+        // Reset per nuovo negozio
+        storeChainInput.value = "";
+        storeNameInput.value  = "";
+        resetProductFields();
+        isBouquet = false;
+        isPlant   = false;
+        updateFlagState();
 
-        // Funzione per nascondere il dialogo di conferma
-        function hideConfirmationDialog() {
-            confirmationDialog.classList.remove('show');
-            setTimeout(() => {
-                confirmationDialog.style.display = 'none';
-                itemToDeleteId = null;
-            }, 200);
-        }
+      } catch (error) {
+        console.error("Errore durante l'esportazione in CSV:", error);
+      }
+    });
 
-        // Gestori eventi per il dialogo
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (itemToDeleteId) {
-                try {
-                    await deleteDoc(doc(db, "prices", itemToDeleteId));
-                    console.log("Documento eliminato con successo!");
-                } catch (error) {
-                    console.error("Errore durante l'eliminazione del documento:", error);
-                }
-            }
-            hideConfirmationDialog();
+    // Realtime listener (solo dati dell'utente)
+    let unsubscribe = null;
+    function setupRealtimeListener() {
+      if (!db) { console.error("Database non disponibile per la connessione in tempo reale."); return; }
+      if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+
+      const qUser = query(
+        collection(db, "prices"),
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc")
+      );
+
+      unsubscribe = onSnapshot(qUser, (querySnapshot) => {
+        priceReportTable.innerHTML = "";
+        querySnapshot.forEach((d) => {
+          const price = { id: d.id, ...d.data() };
+          const type = price.mazzo ? "Mazzo" : "Pianta";
+          const tr = document.createElement("tr");
+          const prezzoStr = (typeof price.prezzo === "number")
+            ? price.prezzo.toFixed(2)
+            : (price.prezzo ?? "").toString();
+
+          tr.innerHTML = `
+            <td>${price.catena || "-"}</td>
+            <td>${price.negozio || "-"}</td>
+            <td>${type || "-"}</td>
+            <td>${price.articolo || "-"}</td>
+            <td>${price.nSteli || "-"}</td>
+            <td>${price.vaso || "-"}</td>
+            <td class="price-cell">€${prezzoStr}</td>
+            <td>${price.fornitore || "-"}</td>
+            <td>${price.eanCode || "-"}</td>
+            <td>${price.note || "-"}</td>
+            <td class="delete-btn-cell">
+              <button class="delete-btn" data-id="${price.id}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </td>
+          `;
+          priceReportTable.appendChild(tr);
         });
 
-        cancelDeleteBtn.addEventListener('click', hideConfirmationDialog);
+        document.querySelectorAll(".delete-btn").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const docId = e.currentTarget.dataset.id;
+            showConfirmationDialog(docId);
+          });
+        });
+      }, (error) => {
+        console.error("Errore nel listener in tempo reale:", error);
+      });
+    }
 
-        // Funzionalità per l'acquisizione tramite camera
-        cameraScanBtn.addEventListener('click', () => {
-            const eanCode = prompt("Simulazione: inserisci il codice EAN (es. 8000000000018)");
-            if (eanCode) {
-                eanCodeInput.value = eanCode;
-            }
+    // Avvio
+    async function startApp() {
+      try {
+        await signInAnonymously(auth);
+        onAuthStateChanged(auth, (user) => {
+          if (user) {
+            userId = user.uid;
+            authReady = true;
+            setupRealtimeListener();
+          } else {
+            authReady = false;
+          }
+        });
+      } catch (error) {
+        console.error("Errore di autenticazione: abilita l'accesso 'Anonimo' in Firebase Auth.", error);
+      }
+    }
+    startApp();
+
+    // --- Scanner EAN: BarcodeDetector + overlay con mirino ---
+    const scannerOverlay = document.getElementById("scannerOverlay");
+    const scannerVideo   = document.getElementById("scannerVideo");
+    const scannerClose   = document.getElementById("scannerClose");
+    let mediaStream = null;
+    let scanning = false;
+    let detector = null;
+
+    async function openScanner() {
+      if (!("BarcodeDetector" in window)) {
+        // Fallback: inserimento manuale
+        alert("Scansione fotocamera non supportata su questo dispositivo. Verrà usato l’inserimento manuale.");
+        const code = prompt("Inserisci il codice EAN (es. 8000000000018)");
+        if (code) eanCodeInput.value = code;
+        return;
+      }
+
+      try {
+        // Inizializza detector (EAN-13 / EAN-8)
+        detector = new BarcodeDetector({ formats: ["ean_13", "ean_8"] });
+
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: "environment" } , width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
         });
 
-        // Funzione per mostrare la notifica "Salvataggio riuscito"
-        function showToast() {
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+        scannerVideo.srcObject = mediaStream;
+        scannerOverlay.classList.add("show");
+        await scannerVideo.play();
+
+        scanning = true;
+        requestAnimationFrame(scanLoop);
+      } catch (err) {
+        console.error("Errore accesso fotocamera:", err);
+        const code = prompt("Inserisci manualmente il codice EAN");
+        if (code) eanCodeInput.value = code;
+      }
+    }
+
+    async function scanLoop() {
+      if (!scanning) return;
+      try {
+        const barcodes = await detector.detect(scannerVideo);
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          eanCodeInput.value = code;
+          closeScanner();
+          showToast();
+          return;
         }
+      } catch (e) {
+        console.debug("Nessun barcode nel frame corrente.");
+      }
+      requestAnimationFrame(scanLoop);
+    }
 
-        // Funzione per resettare i campi del prodotto
-        function resetProductFields() {
-            itemNameInput.value = '';
-            stemsCountInput.value = '';
-            vaseTypeInput.value = '';
-            priceValueInput.value = '';
-            supplierNameInput.value = '';
-            eanCodeInput.value = '';
-            notesInput.value = '';
-        }
+    function closeScanner() {
+      scanning = false;
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = null;
+      }
+      scannerOverlay.classList.remove("show");
+      scannerVideo.srcObject = null;
+    }
 
-        // Aggiungi un nuovo prezzo
-        saveBtn.addEventListener('click', async () => {
-            if (!authReady) {
-                console.error("L'autenticazione non è ancora pronta.");
-                return;
-            }
-
-            const storeChain = storeChainInput.value.trim();
-            const storeName = storeNameInput.value.trim();
-            const itemName = itemNameInput.value.trim();
-            const stemsCount = stemsCountInput.value.trim();
-            const vaseType = vaseTypeInput.value.trim();
-            const price = parseFloat(priceValueInput.value);
-            const supplierName = supplierNameInput.value.trim();
-            const eanCode = eanCodeInput.value.trim();
-            const notes = notesInput.value.trim();
-            
-            // Validazione dei campi obbligatori
-            if (!storeChain || !storeName || !itemName || isNaN(price) || (!isBouquet && !isPlant)) {
-                validationError.textContent = "Si prega di compilare Catena, Negozio, Articolo, Prezzo e selezionare il tipo di prodotto.";
-                validationError.classList.remove('hidden');
-                return;
-            }
-            
-            if (isBouquet && !stemsCount) {
-                validationError.textContent = "Si prega di inserire il numero di Steli.";
-                validationError.classList.remove('hidden');
-                return;
-            }
-            
-            if (isPlant && !vaseType) {
-                validationError.textContent = "Si prega di inserire il tipo di Vaso.";
-                validationError.classList.remove('hidden');
-                return;
-            }
-            
-            if (!supplierName && !eanCode) {
-                validationError.textContent = "Si prega di compilare almeno il Fornitore o il Codice a Barre (EAN).";
-                validationError.classList.remove('hidden');
-                return;
-            }
-
-            validationError.classList.add('hidden');
-
-            try {
-                const newPrice = {
-                    catena: storeChain,
-                    negozio: storeName,
-                    articolo: itemName,
-                    nSteli: isBouquet ? stemsCount : '',
-                    vaso: isPlant ? vaseType : '',
-                    prezzo: price,
-                    fornitore: supplierName,
-                    eanCode: eanCode,
-                    note: notes,
-                    mazzo: isBouquet,
-                    pianta: isPlant,
-                    timestamp: new Date().getTime(),
-                    userId: userId
-                };
-                await addDoc(collection(db, "prices"), newPrice);
-                console.log("Dati aggiunti con successo.");
-                showToast();
-                resetProductFields();
-            } catch (e) {
-                console.error("Errore nell'aggiunta del documento: ", e);
-            }
-        });
-
-        // Funzione per esportare i dati in formato CSV e resettare il form
-        exportCsvBtn.addEventListener('click', async () => {
-            if (!authReady) {
-                console.error("L'autenticazione non è ancora pronta.");
-                return;
-            }
-
-            try {
-                const pricesCollection = collection(db, "prices");
-                const querySnapshot = await getDocs(pricesCollection);
-                
-                let csvContent = "data:text/csv;charset=utf-8,";
-                csvContent += "Catena,Negozio,Tipologia,Articolo,N° Steli,Vaso,Prezzo,Fornitore,Codice a Barre (EAN),Note\n";
-
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    const row = `"${data.catena}","${data.negozio}","${data.mazzo ? 'Mazzo' : 'Pianta'}", "${data.articolo}","${data.nSteli}","${data.vaso}",${data.prezzo},"${data.fornitore}","${data.eanCode}","${data.note}"\n`;
-                    csvContent += row;
-                });
-
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "rilevamento_prezzi.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                // Resetta TUTTO per il nuovo negozio
-                storeChainInput.value = '';
-                storeNameInput.value = '';
-                resetProductFields();
-                isBouquet = false;
-                isPlant = false;
-                updateFlagState();
-
-            } catch (error) {
-                console.error("Errore durante l'esportazione in CSV:", error);
-            }
-        });
-
-        // Ascolta i cambiamenti nel database in tempo reale
-        function setupRealtimeListener() {
-            if (!db) {
-                console.error("Database non disponibile per la connessione in tempo reale.");
-                return;
-            }
-
-            const q = query(collection(db, "prices"));
-            
-            onSnapshot(q, (querySnapshot) => {
-                const prices = [];
-                querySnapshot.forEach((doc) => {
-                    prices.push({ id: doc.id, ...doc.data() });
-                });
-                
-                // Ordina per timestamp, dal più recente al più vecchio
-                prices.sort((a, b) => b.timestamp - a.timestamp);
-
-                priceReportTable.innerHTML = '';
-                
-                prices.forEach(price => {
-                    const type = price.mazzo ? 'Mazzo' : 'Pianta';
-
-                    const newRow = document.createElement('tr');
-                    
-                    newRow.innerHTML = `
-                        <td>${price.catena}</td>
-                        <td>${price.negozio}</td>
-                        <td>${type}</td>
-                        <td>${price.articolo}</td>
-                        <td>${price.nSteli || '-'}</td>
-                        <td>${price.vaso || '-'}</td>
-                        <td class="price-cell">€${price.prezzo.toFixed(2)}</td>
-                        <td>${price.fornitore || '-'}</td>
-                        <td>${price.eanCode || '-'}</td>
-                        <td>${price.note || '-'}</td>
-                        <td class="delete-btn-cell">
-                           <button class="delete-btn" data-id="${price.id}">
-                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </td>
-                    `;
-                    priceReportTable.appendChild(newRow);
-                });
-
-                // Aggiungi event listener per l'eliminazione
-                document.querySelectorAll('.delete-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const docId = e.currentTarget.dataset.id;
-                        showConfirmationDialog(docId);
-                    });
-                });
-            }, (error) => {
-                console.error("Errore nel listener in tempo reale: ", error);
-            });
-        }
-
-        // Funzione di avvio dell'app
-        async function startApp() {
-            try {
-                await signInAnonymously(auth);
-
-                // Ascolta i cambiamenti di stato dell'autenticazione
-                if (auth) {
-                    onAuthStateChanged(auth, user => {
-                        if (user) {
-                            userId = user.uid;
-                            authReady = true;
-                            console.log("Utente autenticato. User ID:", userId);
-                            setupRealtimeListener();
-                        } else {
-                            console.log("Nessun utente autenticato.");
-                            authReady = false;
-                        }
-                    });
-                } else {
-                    console.error("Oggetto di autenticazione non disponibile.");
-                }
-
-            } catch (error) {
-                // Questo errore si verifica se l'autenticazione anonima non è abilitata.
-                console.error("Errore di autenticazione: Assicurati che il metodo di accesso 'Anonimo' sia abilitato nel tuo progetto Firebase.", error);
-            }
-        }
-
-        // Avvia l'app
-        startApp();
-    </script>
+    cameraScanBtn.addEventListener("click", openScanner);
+    scannerClose.addEventListener("click", (e)=> { e.stopPropagation(); closeScanner(); });
+    // Chiudi toccando l’area scura fuori dal video
+    scannerOverlay.addEventListener("click", (e)=> {
+      if (e.target === scannerOverlay) closeScanner();
+    });
+  </script>
 </body>
 </html>
