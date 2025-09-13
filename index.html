@@ -59,22 +59,17 @@
     /* Overlay scanner */
     .scanner-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:3000; }
     .scanner-overlay.show{ display:flex; }
-    .scanner-content{ position:relative; max-width:92vw; max-height:82vh; border-radius:1rem; overflow:hidden; box-shadow:0 0 24px rgba(0,0,0,.6); }
+    .scanner-content{ position:relative; max-width:92vw; max-height:82vh; border-radius:1rem; overflow:hidden; box-shadow:0 0 24px rgba(0,0,0,.6); background:#000; }
     .scanner-video{ display:block; width:100%; height:auto; max-height:82vh; object-fit:cover; background:#000; }
-    .scanner-reticle{
-      position:absolute; inset:0; pointer-events:none;
-      box-sizing:border-box;
-    }
-    /* Mirino: rettangolo centrale con bordo e angoli */
+    .scanner-target{ width:100%; height:100%; max-height:82vh; }
+    .scanner-reticle{ position:absolute; inset:0; pointer-events:none; box-sizing:border-box; }
     .reticle-box{
       position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
       width:min(70vw, 520px); height:min(34vw, 240px);
       border:3px solid rgba(59,130,246,.9); border-radius:16px;
       box-shadow:0 0 0 9999px rgba(0,0,0,0.35) inset;
     }
-    .reticle-corner{
-      position:absolute; width:28px; height:28px; border:4px solid rgba(59,130,246,1);
-    }
+    .reticle-corner{ position:absolute; width:28px; height:28px; border:4px solid rgba(59,130,246,1); }
     .corner-tl{ left:-2px; top:-2px; border-right:none; border-bottom:none; border-radius:12px 0 0 0; }
     .corner-tr{ right:-2px; top:-2px; border-left:none; border-bottom:none; border-radius:0 12px 0 0; }
     .corner-bl{ left:-2px; bottom:-2px; border-right:none; border-top:none; border-radius:0 0 0 12px; }
@@ -331,7 +326,11 @@
   <!-- Overlay scanner -->
   <div id="scannerOverlay" class="scanner-overlay">
     <div class="scanner-content">
+      <!-- Video per BarcodeDetector -->
       <video id="scannerVideo" class="scanner-video" autoplay muted playsinline></video>
+      <!-- Target per Quagga (in fallback) -->
+      <div id="scannerTarget" class="scanner-target" style="display:none;"></div>
+
       <div class="scanner-reticle">
         <div class="reticle-box">
           <div class="reticle-corner corner-tl"></div>
@@ -352,6 +351,9 @@
 
   <!-- Toast -->
   <div id="toast" role="alert">Salvataggio riuscito!</div>
+
+  <!-- Quagga2 (fallback) -->
+  <script src="https://unpkg.com/@ericblade/quagga2@2.0.4/dist/quagga.js"></script>
 
   <script type="module">
     // Firebase
@@ -414,6 +416,17 @@
 
     let itemToDeleteId = null;
 
+    // Scanner refs
+    const scannerOverlay = document.getElementById("scannerOverlay");
+    const scannerVideo   = document.getElementById("scannerVideo");
+    const scannerTarget  = document.getElementById("scannerTarget");
+    const scannerClose   = document.getElementById("scannerClose");
+
+    let mediaStream = null;
+    let scanning = false;
+    let detector = null;
+    let usingQuagga = false;
+
     // Flags
     bouquetFlag.addEventListener("click", () => { isBouquet = true; isPlant = false; updateFlagState(); });
     plantFlag.addEventListener("click", () => { isPlant = true; isBouquet = false; updateFlagState(); });
@@ -456,7 +469,6 @@
       notesInput.value = "";
       validationError.classList.add("hidden");
 
-      // Mantieni visibilità coerente con la tipologia
       if (isBouquet) {
         typeSpecificFields.classList.remove("hidden");
         stemsGroup.classList.remove("hidden");
@@ -508,7 +520,7 @@
       return `"${s.replace(/"/g, '""')}"`;
     };
 
-    // Salva (svuota solo i campi prodotto dopo salvataggio riuscito)
+    // Salva
     saveBtn.addEventListener("click", async () => {
       validationError.classList.add("hidden");
       if (!authReady) { console.error("L'autenticazione non è ancora pronta."); return; }
@@ -533,19 +545,10 @@
 
       try {
         const newPrice = {
-          catena: storeChain,
-          negozio: storeName,
-          articolo: itemName,
-          nSteli: isBouquet ? stemsCount : "",
-          vaso: isPlant ? vaseType : "",
-          prezzo: price,
-          fornitore: supplierName,
-          eanCode: eanCode,
-          note: notes,
-          mazzo: isBouquet,
-          pianta: isPlant,
-          timestamp: serverTimestamp(),
-          userId: userId
+          catena: storeChain, negozio: storeName, articolo: itemName,
+          nSteli: isBouquet ? stemsCount : "", vaso: isPlant ? vaseType : "",
+          prezzo: price, fornitore: supplierName, eanCode, note: notes,
+          mazzo: isBouquet, pianta: isPlant, timestamp: serverTimestamp(), userId
         };
         await addDoc(collection(db, "prices"), newPrice);
         showToast();
@@ -555,7 +558,7 @@
       }
     });
 
-    // Export CSV (azzera anche Catena/Negozio e la tipologia)
+    // Export CSV (azzera tutto per nuovo negozio)
     exportCsvBtn.addEventListener("click", async () => {
       if (!authReady) { console.error("L'autenticazione non è ancora pronta."); return; }
       try {
@@ -683,75 +686,130 @@
     }
     startApp();
 
-    // --- Scanner EAN: BarcodeDetector + overlay con mirino ---
-    const scannerOverlay = document.getElementById("scannerOverlay");
-    const scannerVideo   = document.getElementById("scannerVideo");
-    const scannerClose   = document.getElementById("scannerClose");
-    let mediaStream = null;
-    let scanning = false;
-    let detector = null;
-
+    // --- Scanner EAN: BarcodeDetector + fallback QuaggaJS ---
     async function openScanner() {
-      if (!("BarcodeDetector" in window)) {
-        // Fallback: inserimento manuale
-        alert("Scansione fotocamera non supportata su questo dispositivo. Verrà usato l’inserimento manuale.");
-        const code = prompt("Inserisci il codice EAN (es. 8000000000018)");
-        if (code) eanCodeInput.value = code;
-        return;
-      }
+      scannerOverlay.classList.add("show");
+      usingQuagga = false;
 
-      try {
-        // Inizializza detector (EAN-13 / EAN-8)
-        detector = new BarcodeDetector({ formats: ["ean_13", "ean_8"] });
-
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } , width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false
-        });
-
-        scannerVideo.srcObject = mediaStream;
-        scannerOverlay.classList.add("show");
-        await scannerVideo.play();
-
-        scanning = true;
-        requestAnimationFrame(scanLoop);
-      } catch (err) {
-        console.error("Errore accesso fotocamera:", err);
-        const code = prompt("Inserisci manualmente il codice EAN");
-        if (code) eanCodeInput.value = code;
-      }
-    }
-
-    async function scanLoop() {
-      if (!scanning) return;
-      try {
-        const barcodes = await detector.detect(scannerVideo);
-        if (barcodes.length > 0) {
-          const code = barcodes[0].rawValue;
-          eanCodeInput.value = code;
-          closeScanner();
-          showToast();
+      // 1) Tentativo BarcodeDetector
+      if ("BarcodeDetector" in window) {
+        try {
+          const formats = ["ean_13", "ean_8"];
+          // @ts-ignore
+          detector = new window.BarcodeDetector({ formats });
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+            audio: false
+          });
+          scannerVideo.srcObject = mediaStream;
+          scannerTarget.style.display = "none";
+          scannerVideo.style.display = "block";
+          await scannerVideo.play();
+          startBarcodeDetectorLoop();
+          return;
+        } catch (e) {
+          console.warn("BarcodeDetector non utilizzabile, passo a QuaggaJS.", e);
+          await startQuaggaFallback(); // 2) Fallback
           return;
         }
-      } catch (e) {
-        console.debug("Nessun barcode nel frame corrente.");
+      } else {
+        // 2) Fallback diretto se BarcodeDetector non esiste
+        await startQuaggaFallback();
       }
-      requestAnimationFrame(scanLoop);
     }
 
     function closeScanner() {
-      scanning = false;
+      // Stop BarcodeDetector stream
       if (mediaStream) {
-        mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream.getTracks().forEach(t => t.stop());
         mediaStream = null;
+      }
+      // Stop Quagga se in uso
+      if (usingQuagga && window.Quagga) {
+        try {
+          window.Quagga.offDetected(onQuaggaDetected);
+          window.Quagga.stop();
+        } catch {}
       }
       scannerOverlay.classList.remove("show");
       scannerVideo.srcObject = null;
+      detector = null;
+      usingQuagga = false;
     }
 
+    async function startBarcodeDetectorLoop() {
+      let active = true;
+      const loop = async () => {
+        if (!active || !detector) return;
+        try {
+          const barcodes = await detector.detect(scannerVideo);
+          if (barcodes.length > 0) {
+            const code = barcodes[0].rawValue;
+            eanCodeInput.value = code;
+            closeScanner();
+            showToast();
+            return;
+          }
+        } catch {}
+        requestAnimationFrame(loop);
+      };
+      loop();
+    }
+
+    async function startQuaggaFallback() {
+      // Mostra container di Quagga, nascondi video
+      scannerVideo.style.display = "none";
+      scannerTarget.style.display = "block";
+      usingQuagga = true;
+
+      return new Promise((resolve) => {
+        // Config Quagga
+        window.Quagga.init({
+          inputStream: {
+            type: "LiveStream",
+            target: scannerTarget,
+            constraints: {
+              facingMode: "environment",
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            }
+          },
+          decoder: {
+            readers: ["ean_reader", "ean_8_reader"]
+          },
+          locate: true,
+          locator: { halfSample: true, patchSize: "medium" }
+        }, (err) => {
+          if (err) {
+            console.error("Quagga init error:", err);
+            closeScanner();
+            // Fallback finale: input manuale
+            const code = prompt("Inserisci manualmente il codice EAN");
+            if (code) eanCodeInput.value = code;
+            resolve();
+            return;
+          }
+          window.Quagga.start();
+          window.Quagga.onDetected(onQuaggaDetected);
+          resolve();
+        });
+      });
+    }
+
+    function onQuaggaDetected(result) {
+      if (!result || !result.codeResult || !result.codeResult.code) return;
+      const code = result.codeResult.code;
+      // Filtra formati non EAN: Quagga qui è già limitato ma per sicurezza:
+      if (!/^\d{8,13}$/.test(code)) return;
+
+      eanCodeInput.value = code;
+      closeScanner();
+      showToast();
+    }
+
+    // Bind UI scanner
     cameraScanBtn.addEventListener("click", openScanner);
     scannerClose.addEventListener("click", (e)=> { e.stopPropagation(); closeScanner(); });
-    // Chiudi toccando l’area scura fuori dal video
     scannerOverlay.addEventListener("click", (e)=> {
       if (e.target === scannerOverlay) closeScanner();
     });
