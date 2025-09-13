@@ -4,6 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rilevamento Prezzi</title>
+    <!-- Aggiunti per la PWA -->
+    <link rel="manifest" href="manifest.json">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js').then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -146,6 +159,96 @@
                         <option value="Pam"></option>
                         <option value="Tigros"></option>
                     </datalist>
+                    <!-- Elenco piante per Pianta -->
+                    <datalist id="plantList">
+                        <option value="Agrumi"></option>
+                        <option value="Anthurium"></option>
+                        <option value="Begonia"></option>
+                        <option value="Bougainvillea"></option>
+                        <option value="Calathea"></option>
+                        <option value="Cactus"></option>
+                        <option value="Camelia"></option>
+                        <option value="Ciclamino"></option>
+                        <option value="Cipresso"></option>
+                        <option value="Edera"></option>
+                        <option value="Ficus"></option>
+                        <option value="Gelsomino"></option>
+                        <option value="Geranio"></option>
+                        <option value="Lavanda"></option>
+                        <option value="Limone"></option>
+                        <option value="Magnolia"></option>
+                        <option value="Mandevilla"></option>
+                        <option value="Monstera"></option>
+                        <option value="Ortensia"></option>
+                        <option value="Palma"></option>
+                        <option value="Pino"></option>
+                        <option value="Pothos"></option>
+                        <option value="Rose"></option>
+                        <option value="Stella di Natale"></option>
+                        <option value="Succulente"></option>
+                        <option value="Ulivo"></option>
+                        <option value="Zamioculcas"></option>
+                    </datalist>
+                    <!-- Elenco diametri vaso per Pianta -->
+                    <datalist id="vaseDiameterList">
+                        <option value="3"></option>
+                        <option value="4"></option>
+                        <option value="5"></option>
+                        <option value="6"></option>
+                        <option value="7"></option>
+                        <option value="8"></option>
+                        <option value="9"></option>
+                        <option value="10"></option>
+                        <option value="11"></option>
+                        <option value="12"></option>
+                        <option value="13"></option>
+                        <option value="14"></option>
+                        <option value="15"></option>
+                        <option value="16"></option>
+                        <option value="17"></option>
+                        <option value="18"></option>
+                        <option value="19"></option>
+                        <option value="20"></option>
+                        <option value="21"></option>
+                        <option value="22"></option>
+                        <option value="23"></option>
+                        <option value="24"></option>
+                        <option value="25"></option>
+                        <option value="26"></option>
+                        <option value="27"></option>
+                        <option value="28"></option>
+                        <option value="29"></option>
+                        <option value="30"></option>
+                    </datalist>
+                    <!-- Nuovo elenco di fiori recisi per Mazzo -->
+                    <datalist id="cutFlowersList">
+                        <option value="Alstroemerie"></option>
+                        <option value="Amarilli"></option>
+                        <option value="Anemoni"></option>
+                        <option value="Anthurium"></option>
+                        <option value="Calle"></option>
+                        <option value="Crisantemi"></option>
+                        <option value="Fiori recisi"></option>
+                        <option value="Fresie"></option>
+                        <option value="Garofani"></option>
+                        <option value="Gerbere"></option>
+                        <option value="Girasoli"></option>
+                        <option value="Gipsophila"></option>
+                        <option value="Gladioli"></option>
+                        <option value="Iris"></option>
+                        <option value="Lilium"></option>
+                        <option value="Lisianthus"></option>
+                        <option value="Orchidee Cymbidium"></option>
+                        <option value="Orchidee Dendrobium"></option>
+                        <option value="Peonie"></option>
+                        <option value="Ranuncoli"></option>
+                        <option value="Rose"></option>
+                        <option value="Rose solidal"></option>
+                        <option value="Ruscus"></option>
+                        <option value="Solidago"></option>
+                        <option value="Strelitzie"></option>
+                        <option value="Tulipani"></option>
+                    </datalist>
                 </div>
                 <div class="form-group flex-1">
                     <label for="storeName" class="block text-gray-700 font-medium mb-1">Negozio</label>
@@ -168,9 +271,11 @@
             </div>
 
             <!-- Articolo -->
-            <div class="form-group">
-                <label for="itemName" class="block text-gray-700 font-medium mb-1">Articolo</label>
-                <input type="text" id="itemName" class="price-input" placeholder="">
+            <div class="flex flex-col sm:flex-row gap-6">
+                <div class="form-group flex-1">
+                    <label for="itemName" class="block text-gray-700 font-medium mb-1">Articolo</label>
+                    <input type="text" id="itemName" class="price-input" placeholder="">
+                </div>
             </div>
             
             <!-- Campi condizionali per Steli e Vaso -->
@@ -274,7 +379,7 @@
         const saveBtn = document.getElementById('saveBtn');
         const exportCsvBtn = document.getElementById('exportCsvBtn');
         const cameraScanBtn = document.getElementById('cameraScanBtn');
-        const storeChainInput = document.getElementById('storeChain'); // Aggiornato per usare l'input
+        const storeChainInput = document.getElementById('storeChain');
         const storeNameInput = document.getElementById('storeName');
         const itemNameInput = document.getElementById('itemName');
         const stemsCountInput = document.getElementById('stemsCount');
@@ -319,12 +424,18 @@
                 stemsGroup.classList.remove('hidden');
                 vaseGroup.classList.add('hidden');
                 vaseTypeInput.value = '';
+                // Aggiunge l'elenco dei fiori recisi per Mazzo
+                itemNameInput.setAttribute('list', 'cutFlowersList');
+                vaseTypeInput.removeAttribute('list');
             } else if (isPlant) {
                 plantFlag.classList.add('active');
                 bouquetFlag.classList.remove('active');
                 vaseGroup.classList.remove('hidden');
                 stemsGroup.classList.add('hidden');
                 stemsCountInput.value = '';
+                // Aggiunge gli elenchi per Pianta
+                itemNameInput.setAttribute('list', 'plantList');
+                vaseTypeInput.setAttribute('list', 'vaseDiameterList');
             } else {
                 bouquetFlag.classList.remove('active');
                 plantFlag.classList.remove('active');
@@ -333,6 +444,9 @@
                 typeSpecificFields.classList.add('hidden');
                 stemsCountInput.value = '';
                 vaseTypeInput.value = '';
+                // Rimuove tutti gli elenchi in assenza di selezione
+                itemNameInput.removeAttribute('list');
+                vaseTypeInput.removeAttribute('list');
             }
         }
 
