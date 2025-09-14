@@ -1,12 +1,12 @@
-const cacheName = 'prezzi-app-v1';
+const cacheName = 'prezzi-app-v2';
 const filesToCache = [
   './',
   './index.html',
   './manifest.json',
+  './logo_48x48.png',
   './logo_120x120.png',
   './logo_152x152.png',
   './logo_180x180.png',
-  './logo_48x48.png',
   './logo_192x192.png',
   './logo_512x512.png',
   'https://cdn.tailwindcss.com',
