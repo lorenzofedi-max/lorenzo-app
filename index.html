@@ -651,7 +651,7 @@
         }
 
         // Funzione per svuotare i campi del form mantenendo i campi della catena e del negozio
-        function resetProductFields() {
+        function resetProductAndPriceFields() {
             itemNameInput.value = '';
             stemsCountInput.value = '';
             vaseDiameterInput.value = '';
@@ -662,11 +662,19 @@
             currentType = null;
             bouquetFlag.classList.remove('active');
             plantFlag.classList.remove('active');
-            stemsGroup.querySelector('input').disabled = false;
-            vaseGroup.querySelector('input').disabled = false;
             stemsGroup.classList.remove('hidden');
             vaseGroup.classList.remove('hidden');
             itemNameInput.removeAttribute('list');
+        }
+
+        // Funzione per svuotare TUTTI i campi e la tabella
+        function resetAllFields() {
+            storeChainInput.value = '';
+            storeNameInput.value = '';
+            resetProductAndPriceFields();
+            prices = [];
+            saveData();
+            renderTable();
         }
 
         // Funzione per impostare la tipologia e gestire i campi
@@ -789,7 +797,7 @@
             prices.push(newPrice);
             saveData();
             renderTable();
-            resetProductFields();
+            resetProductAndPriceFields();
             showToast('Dati registrati!');
         });
 
@@ -857,6 +865,7 @@
             link.click();
             document.body.removeChild(link);
             showToast('Dati esportati!');
+            resetAllFields();
         });
 
         // Gestione dei flag Mazzo/Pianta
