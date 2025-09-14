@@ -4,15 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rilevamento Prezzi</title>
-    <!-- Tag PWA per iOS come da suggerimento dell'amico -->
-    <link rel="apple-touch-icon" sizes="120x120" href="/logo_120x120.png?v=4">
-    <link rel="apple-touch-icon" sizes="152x152" href="/logo_152x152.png?v=4">
-    <link rel="apple-touch-icon" sizes="180x180" href="/logo_180x180.png?v=4">
-    <!-- Opzionale: fallback generico per iOS -->
-    <link rel="apple-touch-icon" href="/logo_180x180.png?v=4">
-    
-    <!-- Tag icona standard per altri browser -->
-    <link rel="icon" type="image/png" sizes="48x48" href="/logo_48x48.png?v=4">
+    <!-- Tag per l'icona della PWA su iOS -->
+    <link rel="apple-touch-icon" sizes="120x120" href="logo_120x120.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="logo_152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="logo_180x180.png">
+    <link rel="apple-touch-icon" href="logo_180x180.png">
     
     <!-- Aggiunti per la PWA -->
     <link rel="manifest" href="manifest.json">
@@ -28,7 +24,7 @@
       }
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
@@ -49,7 +45,7 @@
             border-radius: 0.5rem;
             border: 1px solid #d1d5db;
             outline: none;
-            transition: border-color 0.2s, background-color 0.2s, opacity 0.2s;
+            transition: border-color 0.2s;
             font-size: 1rem;
         }
         .price-input:focus {
@@ -57,11 +53,6 @@
         }
         .price-input.border-red-500 {
             border-color: #ef4444;
-        }
-        .price-input:disabled {
-            background-color: #f3f4f6;
-            opacity: 0.7;
-            cursor: not-allowed;
         }
         .dialog {
             display: none;
@@ -74,6 +65,9 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
+        }
+        .dialog.show {
+            display: flex;
         }
         .dialog-content {
             background-color: white;
@@ -217,96 +211,57 @@
             height: 100px;
             border-radius: 50%;
         }
-        /* Stili per il modale dello scanner */
-        #scannerModal {
+        .ean-input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .camera-button {
+            position: absolute;
+            right: 0.5rem;
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+        #qr-reader-container {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: white;
-            display: none;
+            background-color: #111827;
+            z-index: 999;
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            z-index: 2000;
-            gap: 1rem;
+            justify-content: center;
         }
         #qr-reader {
-            width: 90%;
-            max-width: 500px;
-            border: 2px solid #ccc;
-            border-radius: 0.75rem;
+            width: 90vw;
+            max-width: 400px;
+            height: auto;
+            border: 2px solid; /* Aggiunto per il feedback visivo */
+            border-radius: 1rem;
             overflow: hidden;
         }
-        /* Stili per il bordo colorato dello scanner */
-        #qr-reader-overlay {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-        #qr-reader-overlay .scan-area {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 90%;
-            height: 150px; /* Altezza fissa */
-            max-width: 250px; /* Larghezza massima */
-            border: 4px solid #ef4444; /* Bordo rosso di default */
-            border-radius: 0.75rem;
-            transition: border-color 0.3s;
-        }
-        .scanner-btn-close {
+        .scanner-close-button {
+            margin-top: 1rem;
             background-color: #ef4444;
             color: white;
-            padding: 0.75rem 2rem;
-            border-radius: 0.75rem;
             font-weight: 600;
-            transition: background-color 0.2s;
-        }
-        .scanner-btn-close:hover {
-            background-color: #dc2626;
-        }
-        .ean-input-group {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-        .ean-input-group .price-input {
-            padding-right: 3rem; /* Spazio per l'icona */
-        }
-        .ean-input-group .camera-icon-btn {
-            position: absolute;
-            right: 0.5rem;
-            background: none;
-            border: none;
-            padding: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
             cursor: pointer;
         }
-        .ean-input-group .camera-icon-btn svg {
-            width: 1.5rem;
-            height: 1.5rem;
-            fill: #4b5563;
-        }
-        /* Stili per i campi Steli e Vaso */
-        #stems-vase-container {
-            display: flex;
-            flex-direction: row;
-            gap: 1.5rem;
-            width: 100%;
-        }
-        #stems-vase-container .form-group {
-            flex: 1;
-            margin-bottom: 0;
-        }
+        
     </style>
 </head>
 <body class="bg-white min-h-screen flex flex-col items-center">
-    <!-- Audio per il "bip" dello scanner -->
-    <audio id="scannerBeep" src="https://www.soundjay.com/buttons/sounds/button-2.mp3" preload="auto"></audio>
+    <!-- Contenitore principale dell'app -->
     <div class="container mt-8 p-6 bg-white rounded-xl shadow-lg w-full md:max-w-3xl">
-        <!-- Riferimento all'immagine del logo nella stessa directory del file HTML -->
+        <!-- Logo -->
         <img src="./logo_192x192.png" 
              alt="Logo dell'app" 
              class="app-logo"
@@ -472,14 +427,14 @@
             </div>
             
             <!-- Campi condizionali per Steli e Vaso -->
-            <div id="stems-vase-container">
-                <div class="form-group flex-1">
+            <div id="typeSpecificFields" class="flex flex-col sm:flex-row gap-6">
+                <div id="stemsGroup" class="form-group flex-1">
                     <label for="stemsCount" class="block text-gray-700 font-medium mb-1">N° Steli</label>
                     <input type="number" list="stemsList" id="stemsCount" class="price-input" placeholder="Seleziona o digita il numero" required>
                 </div>
-                <div class="form-group flex-1">
-                    <label for="vaseType" class="block text-gray-700 font-medium mb-1">Vaso</label>
-                    <input type="text" id="vaseType" class="price-input" placeholder="Seleziona o digita un vaso" required>
+                <div id="vaseGroup" class="form-group flex-1">
+                    <label for="vaseDiameter" class="block text-gray-700 font-medium mb-1">Vaso</label>
+                    <input list="vaseDiameterList" id="vaseDiameter" class="price-input" placeholder="Seleziona o digita il diametro" required>
                 </div>
             </div>
 
@@ -503,12 +458,10 @@
                 </div>
                 <div class="form-group flex-1">
                     <label for="eanCode" class="block text-gray-700 font-medium mb-1">Codice a Barre (EAN)</label>
-                    <div class="relative ean-input-group">
-                        <input type="text" id="eanCode" class="price-input" placeholder="Inserisci il codice EAN">
-                        <button id="cameraScanBtn" class="camera-icon-btn">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                                <path d="M149.1 64.8L138.7 96H64C28.7 96 0 124.7 0 160V416c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V160c0-35.3-28.7-64-64-64H373.3L362.9 64.8C356.6 45.4 338.4 32 318.2 32H193.8c-20.2 0-38.4 13.4-44.7 32.8zM256 192a96 96 0 1 1 0 192 96 96 0 1 1 0-192z"/>
-                            </svg>
+                    <div class="ean-input-container">
+                        <input type="text" id="eanCode" class="price-input pr-12" placeholder="Inserisci il codice EAN">
+                        <button id="cameraScanBtn" class="camera-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5L14.5 4z"/><circle cx="12" cy="13" r="3"/></svg>
                         </button>
                     </div>
                 </div>
@@ -523,9 +476,9 @@
             <p id="validationError" class="error-message hidden">Si prega di compilare tutti i campi obbligatori.</p>
         </div>
         
-        <!-- Pulsanti Registra e Camera -->
-        <div class="mb-6 flex flex-col sm:flex-row gap-4">
-            <button id="saveBtn" class="bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex-1">
+        <!-- Pulsante Registra -->
+        <div class="mb-6 flex justify-center">
+            <button id="saveBtn" class="bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex-1 max-w-sm">
                 Registra
             </button>
         </div>
@@ -578,15 +531,12 @@
         </div>
     </div>
 
-    <!-- Scanner Modal -->
-    <div id="scannerModal" class="fixed inset-0 bg-white flex flex-col items-center justify-start pt-16 z-50 hidden">
-        <div id="qr-reader-container" class="w-11/12 max-w-sm">
-            <div id="qr-reader"></div>
-            <div id="qr-reader-overlay">
-                <div class="scan-area"></div>
-            </div>
+    <!-- Scanner EAN -->
+    <div id="qr-reader-container" class="hidden">
+        <div class="flex flex-col items-center justify-center h-full">
+            <div id="qr-reader" class="rounded-xl overflow-hidden" style="border: 2px solid red;"></div>
+            <button id="close-scanner-btn" class="scanner-close-button mt-4">Chiudi</button>
         </div>
-        <button id="closeScannerBtn" class="bg-red-500 text-white font-bold py-3 px-6 rounded-lg mt-8 shadow-lg hover:bg-red-600 transition">Annulla</button>
     </div>
 
     <!-- Toast Notification -->
@@ -605,7 +555,7 @@
         const storeNameInput = document.getElementById('storeName');
         const itemNameInput = document.getElementById('itemName');
         const stemsCountInput = document.getElementById('stemsCount');
-        const vaseTypeInput = document.getElementById('vaseType');
+        const vaseDiameterInput = document.getElementById('vaseDiameter');
         const priceValueInput = document.getElementById('priceValue');
         const supplierNameInput = document.getElementById('supplierName');
         const eanCodeInput = document.getElementById('eanCode');
@@ -615,350 +565,340 @@
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
         const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
         const validationError = document.getElementById('validationError');
-        const toast = document.getElementById('toast');
-        const searchInput = document.getElementById('searchInput');
-
         const bouquetFlag = document.getElementById('bouquetFlag');
         const plantFlag = document.getElementById('plantFlag');
-        const stemsGroup = stemsCountInput.closest('.form-group');
-        const vaseGroup = vaseTypeInput.closest('.form-group');
-        const scannerBeep = document.getElementById('scannerBeep');
-
-        const scannerModal = document.getElementById('scannerModal');
-        const closeScannerBtn = document.getElementById('closeScannerBtn');
+        const stemsGroup = document.getElementById('stemsGroup');
+        const vaseGroup = document.getElementById('vaseGroup');
+        const qrReaderContainer = document.getElementById('qr-reader-container');
         const qrReader = document.getElementById('qr-reader');
-        const scanArea = document.querySelector('.scan-area');
-        
-        let html5QrCodeScanner = null;
+        const closeScannerBtn = document.getElementById('close-scanner-btn');
+        const searchInput = document.getElementById('searchInput');
 
-        let isBouquet = false;
-        let isPlant = false;
+        // Suono di beep
+        const beepSound = new Audio('data:audio/wav;base64,UklGRl9QDwBXQVZFZm10IBAAAAABAAEARKwAAIhYAABBZGF0YTo8DwA'); // Un semplice suono di beep in Base64
 
-        let itemToDeleteId = null;
+        // Stato della UI
+        let currentType = null;
+        let html5QrCode;
 
-        // Funzione per salvare i dati in localStorage
-        function saveToLocalStorage() {
+        // Funzione per salvare i dati su localStorage
+        function saveData() {
             localStorage.setItem(localStorageKey, JSON.stringify(prices));
         }
 
-        // Funzione per caricare i dati da localStorage all'avvio dell'app
-        function loadFromLocalStorage() {
-            const storedData = localStorage.getItem(localStorageKey);
-            if (storedData) {
-                prices = JSON.parse(storedData);
-            }
-            updateTable();
-        }
-
-        // Gestione delle icone flag
-        bouquetFlag.addEventListener('click', () => {
-            isBouquet = true;
-            isPlant = false;
-            updateFlagState();
-        });
-
-        plantFlag.addEventListener('click', () => {
-            isPlant = true;
-            isBouquet = false;
-            updateFlagState();
-        });
-        
-        function updateFlagState() {
-            itemNameInput.value = '';
-            
-            if (isBouquet) {
-                bouquetFlag.classList.add('active');
-                plantFlag.classList.remove('active');
-                
-                stemsCountInput.disabled = false;
-                stemsCountInput.required = true;
-                vaseTypeInput.disabled = true;
-                vaseTypeInput.required = false;
-
-                stemsGroup.style.opacity = '1';
-                vaseGroup.style.opacity = '0.5';
-
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.remove('hidden');
-
-                itemNameInput.setAttribute('list', 'cutFlowersList');
-            } else if (isPlant) {
-                plantFlag.classList.add('active');
-                bouquetFlag.classList.remove('active');
-                
-                stemsCountInput.disabled = true;
-                stemsCountInput.required = false;
-                vaseTypeInput.disabled = false;
-                vaseTypeInput.required = true;
-
-                stemsGroup.style.opacity = '0.5';
-                vaseGroup.style.opacity = '1';
-
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.remove('hidden');
-                
-                itemNameInput.setAttribute('list', 'plantList');
-            } else {
-                bouquetFlag.classList.remove('active');
-                plantFlag.classList.remove('active');
-                
-                stemsCountInput.disabled = false;
-                stemsCountInput.required = false;
-                vaseTypeInput.disabled = false;
-                vaseTypeInput.required = false;
-
-                stemsGroup.style.opacity = '1';
-                vaseGroup.style.opacity = '1';
-
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.remove('hidden');
-
-                itemNameInput.removeAttribute('list');
+        // Funzione per caricare i dati da localStorage
+        function loadData() {
+            const data = localStorage.getItem(localStorageKey);
+            if (data) {
+                prices = JSON.parse(data);
+                renderTable();
             }
         }
 
-        // Funzione per mostrare il dialogo di conferma
-        function showConfirmationDialog(index) {
-            itemToDeleteId = index;
-            confirmationDialog.style.display = 'flex';
-            setTimeout(() => {
-                confirmationDialog.classList.add('show');
-            }, 10);
-        }
-
-        // Funzione per nascondere il dialogo di conferma
-        function hideConfirmationDialog() {
-            confirmationDialog.classList.remove('show');
-            setTimeout(() => {
-                confirmationDialog.style.display = 'none';
-                itemToDeleteId = null;
-            }, 200);
-        }
-
-        // Gestori eventi per il dialogo
-        confirmDeleteBtn.addEventListener('click', () => {
-            if (itemToDeleteId !== null) {
-                prices.splice(itemToDeleteId, 1);
-                updateTable();
-                saveToLocalStorage(); // Salva dopo l'eliminazione
-            }
-            hideConfirmationDialog();
-        });
-
-        cancelDeleteBtn.addEventListener('click', hideConfirmationDialog);
-
-        // Funzionalità per l'acquisizione tramite camera
-        cameraScanBtn.addEventListener('click', () => {
-            scannerModal.style.display = 'flex';
-            
-            // Inizializza lo scanner
-            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                scannerBeep.play(); // Riproduce il suono
-                eanCodeInput.value = decodedText;
-                scanArea.style.borderColor = '#10b981'; // Imposta il bordo a verde
-                setTimeout(() => {
-                    closeScanner();
-                    scanArea.style.borderColor = '#ef4444'; // Resetta il bordo a rosso
-                }, 500);
-            };
-            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
-            html5QrCodeScanner = new Html5Qrcode("qr-reader");
-            html5QrCodeScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
-        });
-
-        closeScannerBtn.addEventListener('click', () => {
-            closeScanner();
-        });
-
-        function closeScanner() {
-            if (html5QrCodeScanner) {
-                html5QrCodeScanner.stop().then(() => {
-                    console.log("QR Code scanner stopped.");
-                }).catch(err => {
-                    console.error("Failed to stop scanner", err);
-                });
-            }
-            scannerModal.style.display = 'none';
-        }
-
-        // Funzione per mostrare la notifica "Salvataggio riuscito"
-        function showToast() {
+        // Funzione per mostrare la notifica
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
             toast.classList.add('show');
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
         }
 
-        // Funzione per resettare i campi del prodotto (lasciando Catena e Negozio)
+        // Funzione per la formattazione della data
+        function formatDate(date) {
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+            return new Date(date).toLocaleDateString('it-IT', options);
+        }
+
+        // Funzione per rendere la tabella
+        function renderTable(filteredPrices = prices) {
+            priceReportTable.innerHTML = '';
+            if (filteredPrices.length === 0) {
+                priceReportTable.innerHTML = `<tr><td colspan="12" class="text-center text-gray-500 py-4">Nessun dato registrato.</td></tr>`;
+                return;
+            }
+            filteredPrices.forEach((price, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${formatDate(price.timestamp)}</td>
+                    <td>${price.storeChain}</td>
+                    <td>${price.storeName}</td>
+                    <td>${price.type || 'N/A'}</td>
+                    <td>${price.itemName}</td>
+                    <td>${price.stemsCount || 'N/A'}</td>
+                    <td>${price.vaseDiameter || 'N/A'}</td>
+                    <td class="price-cell">€ ${parseFloat(price.priceValue).toFixed(2)}</td>
+                    <td>${price.supplierName || 'N/A'}</td>
+                    <td>${price.eanCode || 'N/A'}</td>
+                    <td>${price.notes || 'N/A'}</td>
+                    <td class="delete-btn-cell">
+                        <button class="delete-btn" data-index="${index}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                        </button>
+                    </td>
+                `;
+                priceReportTable.appendChild(row);
+            });
+        }
+
+        // Funzione per svuotare i campi del form
         function resetProductFields() {
+            storeChainInput.value = '';
+            storeNameInput.value = '';
             itemNameInput.value = '';
             stemsCountInput.value = '';
-            vaseTypeInput.value = '';
+            vaseDiameterInput.value = '';
             priceValueInput.value = '';
             supplierNameInput.value = '';
             eanCodeInput.value = '';
             notesInput.value = '';
-            isBouquet = false;
-            isPlant = false;
-            updateFlagState();
+            currentType = null;
+            bouquetFlag.classList.remove('active');
+            plantFlag.classList.remove('active');
+            stemsGroup.classList.remove('hidden');
+            vaseGroup.classList.remove('hidden');
+        }
+
+        // Funzione per impostare la tipologia e gestire i campi
+        function setProductType(type) {
+            currentType = type;
+            if (type === 'Mazzo') {
+                bouquetFlag.classList.add('active');
+                plantFlag.classList.remove('active');
+                stemsGroup.querySelector('input').disabled = false;
+                vaseGroup.querySelector('input').disabled = true;
+                vaseGroup.querySelector('input').value = '';
+            } else if (type === 'Pianta') {
+                bouquetFlag.classList.remove('active');
+                plantFlag.classList.add('active');
+                stemsGroup.querySelector('input').disabled = true;
+                stemsGroup.querySelector('input').value = '';
+                vaseGroup.querySelector('input').disabled = false;
+            } else {
+                // Caso di reset o nessuna selezione
+                bouquetFlag.classList.remove('active');
+                plantFlag.classList.remove('active');
+                stemsGroup.querySelector('input').disabled = false;
+                vaseGroup.querySelector('input').disabled = false;
+            }
         }
         
-        // Funzione per aggiornare la tabella dei prezzi
-        function updateTable() {
-            priceReportTable.innerHTML = '';
-            
-            prices.forEach((price, index) => {
-                const type = price.mazzo ? 'Mazzo' : 'Pianta';
-                const date = new Date(price.timestamp).toLocaleDateString('it-IT');
-
-                const newRow = document.createElement('tr');
-                
-                newRow.innerHTML = `
-                    <td>${date}</td>
-                    <td>${price.catena}</td>
-                    <td>${price.negozio}</td>
-                    <td>${type}</td>
-                    <td>${price.articolo}</td>
-                    <td>${price.nSteli || '-'}</td>
-                    <td>${price.vaso || '-'}</td>
-                    <td class="price-cell">€${price.prezzo.toFixed(2)}</td>
-                    <td>${price.fornitore || '-'}</td>
-                    <td>${price.eanCode || '-'}</td>
-                    <td>${price.note || '-'}</td>
-                    <td class="delete-btn-cell">
-                       <button class="delete-btn" data-index="${index}">
-                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                        </button>
-                    </td>
-                `;
-                priceReportTable.appendChild(newRow);
+        // Funzione per avviare lo scanner EAN
+        function startScanner() {
+            qrReaderContainer.style.display = 'flex';
+            const html5QrCode = new Html5Qrcode("qr-reader");
+            const config = { 
+                fps: 10, 
+                qrbox: { width: 300, height: 150 },
+                supportedScanTypes: [
+                    Html5Qrcode.ScanType.CODE_128,
+                    Html5Qrcode.ScanType.EAN_13
+                ]
+            };
+        
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText, decodedResult) => {
+                    // Successo nella scansione
+                    beepSound.play();
+                    eanCodeInput.value = decodedText;
+                    stopScanner();
+                    showToast('EAN acquisito!');
+                },
+                (errorMessage) => {
+                    // Fallimento della scansione
+                    // Non mostriamo un errore all'utente, ma gestiamo internamente
+                    //console.log(errorMessage);
+                }
+            ).catch((err) => {
+                // Errore all'avvio della fotocamera
+                console.error("Errore all'avvio della fotocamera:", err);
+                alert("Errore nell'avvio della fotocamera. Assicurati di aver concesso i permessi.");
+                stopScanner();
             });
-
-            // Aggiungi event listener per l'eliminazione
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const index = e.currentTarget.dataset.index;
-                    showConfirmationDialog(index);
-                });
-            });
+        
+            closeScannerBtn.addEventListener('click', stopScanner);
         }
 
-        // Aggiungi un nuovo prezzo
+        // Funzione per fermare lo scanner
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    qrReaderContainer.style.display = 'none';
+                }).catch(err => {
+                    console.error("Errore nello stop della fotocamera:", err);
+                    qrReaderContainer.style.display = 'none';
+                });
+            } else {
+                qrReaderContainer.style.display = 'none';
+            }
+        }
+        
+        // Listener per gli eventi
         saveBtn.addEventListener('click', () => {
-            // Rimuovi eventuali classi di errore precedenti
-            document.querySelectorAll('.price-input').forEach(input => input.classList.remove('border-red-500'));
+            if (!storeChainInput.value || !storeNameInput.value || !itemNameInput.value || !priceValueInput.value || !currentType) {
+                validationError.classList.remove('hidden');
+                return;
+            }
             validationError.classList.add('hidden');
 
-            let isValid = true;
-
-            const storeChain = storeChainInput.value.trim();
-            const storeName = storeNameInput.value.trim();
-            const itemName = itemNameInput.value.trim();
-            const price = parseFloat(priceValueInput.value);
-            const supplierName = supplierNameInput.value.trim();
-            const eanCode = eanCodeInput.value.trim();
-            const stemsCount = stemsCountInput.value.trim();
-            const vaseType = vaseTypeInput.value.trim();
-            const notes = notesInput.value.trim();
-            
-            // Validazione dei campi obbligatori
-            if (!storeChain) { storeChainInput.classList.add('border-red-500'); isValid = false; }
-            if (!storeName) { storeNameInput.classList.add('border-red-500'); isValid = false; }
-            if (!itemName) { itemNameInput.classList.add('border-red-500'); isValid = false; }
-            if (isNaN(price)) { priceValueInput.classList.add('border-red-500'); isValid = false; }
-            if (!isBouquet && !isPlant) { isValid = false; validationError.textContent = "Si prega di selezionare un tipo di prodotto (Mazzo o Pianta)."; validationError.classList.remove('hidden'); }
-            
-            if (isBouquet && !stemsCount) { stemsCountInput.classList.add('border-red-500'); isValid = false; }
-            if (isPlant && !vaseType) { vaseTypeInput.classList.add('border-red-500'); isValid = false; }
-            if (!supplierName && !eanCode) {
-                 isValid = false;
-                 validationError.textContent = "Si prega di compilare almeno il Fornitore o il Codice a Barre (EAN).";
-                 validationError.classList.remove('hidden');
-                 supplierNameInput.classList.add('border-red-500');
-                 eanCodeInput.classList.add('border-red-500');
-            }
-
-            if (!isValid) {
-                return;
-            }
-
             const newPrice = {
-                catena: storeChain,
-                negozio: storeName,
-                articolo: itemName,
-                nSteli: isBouquet ? stemsCount : '',
-                vaso: isPlant ? vaseType : '',
-                prezzo: price,
-                fornitore: supplierName,
-                eanCode: eanCode,
-                note: notes,
-                mazzo: isBouquet,
-                pianta: isPlant,
-                timestamp: new Date().getTime(),
+                id: Date.now(),
+                timestamp: new Date().toISOString(),
+                storeChain: storeChainInput.value,
+                storeName: storeNameInput.value,
+                type: currentType,
+                itemName: itemNameInput.value,
+                stemsCount: stemsCountInput.disabled ? null : stemsCountInput.value,
+                vaseDiameter: vaseDiameterInput.disabled ? null : vaseDiameterInput.value,
+                priceValue: priceValueInput.value,
+                supplierName: supplierNameInput.value,
+                eanCode: eanCodeInput.value,
+                notes: notesInput.value
             };
-            
-            prices.unshift(newPrice); // Aggiungi il nuovo prezzo all'inizio dell'array
-            updateTable();
-            saveToLocalStorage(); // Salva dopo l'aggiunta
-            showToast();
+
+            prices.push(newPrice);
+            saveData();
+            renderTable();
             resetProductFields();
+            showToast('Dati registrati!');
         });
 
-        // Funzione per esportare i dati in formato CSV
+        priceReportTable.addEventListener('click', (e) => {
+            if (e.target.closest('.delete-btn')) {
+                const index = e.target.closest('.delete-btn').dataset.index;
+                // Mostra il dialog di conferma prima di eliminare
+                confirmationDialog.classList.add('show');
+
+                // Gestione della conferma di eliminazione
+                confirmDeleteBtn.onclick = () => {
+                    prices.splice(index, 1);
+                    saveData();
+                    renderTable();
+                    confirmationDialog.classList.remove('show');
+                    showToast('Elemento eliminato!');
+                };
+                
+                // Gestione dell'annullamento
+                cancelDeleteBtn.onclick = () => {
+                    confirmationDialog.classList.remove('show');
+                };
+            }
+        });
+        
         exportCsvBtn.addEventListener('click', () => {
             if (prices.length === 0) {
-                alert('Non ci sono dati da esportare.');
+                alert('Nessun dato da esportare!');
                 return;
             }
             
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Data,Catena,Negozio,Tipologia,Articolo,N° Steli,Vaso,Prezzo,Fornitore,Codice a Barre (EAN),Note\n";
-
-            prices.forEach(data => {
-                const date = new Date(data.timestamp).toLocaleDateString('it-IT');
-                const row = `"${date}","${data.catena}","${data.negozio}","${data.mazzo ? 'Mazzo' : 'Pianta'}", "${data.articolo}","${data.nSteli}","${data.vaso}",${data.prezzo},"${data.fornitore}","${data.eanCode}","${data.note}"\n`;
-                csvContent += row;
-            });
-
-            const encodedUri = encodeURI(csvContent);
+            const headers = ["Data", "Catena", "Negozio", "Tipologia", "Articolo", "N° Steli", "Vaso", "Prezzo", "Fornitore", "Codice a Barre (EAN)", "Note"];
+            const csvRows = [];
+            csvRows.push(headers.join(';'));
+            
+            for (const item of prices) {
+                const values = [
+                    formatDate(item.timestamp),
+                    `"${item.storeChain}"`,
+                    `"${item.storeName}"`,
+                    `"${item.type}"`,
+                    `"${item.itemName}"`,
+                    `"${item.stemsCount || 'N/A'}"`,
+                    `"${item.vaseDiameter || 'N/A'}"`,
+                    `"${parseFloat(item.priceValue).toFixed(2)}"`,
+                    `"${item.supplierName || 'N/A'}"`,
+                    `"${item.eanCode || 'N/A'}"`,
+                    `"${item.notes || 'N/A'}"`
+                ];
+                csvRows.push(values.join(';'));
+            }
+            
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", url);
             link.setAttribute("download", "rilevamento_prezzi.csv");
+            link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            // Resetta TUTTO per il nuovo negozio
-            storeChainInput.value = '';
-            storeNameInput.value = '';
-            prices = [];
-            saveToLocalStorage(); // Salva dopo aver resettato
-            updateTable();
-            resetProductFields();
+            showToast('Dati esportati!');
         });
-        
-        // Ascolta i cambiamenti nel campo di ricerca
-        searchInput.addEventListener('input', () => {
-            const searchTerm = searchInput.value.toLowerCase();
-            const rows = priceReportTable.querySelectorAll('tr');
 
-            rows.forEach(row => {
-                const rowText = row.textContent.toLowerCase();
-                if (rowText.includes(searchTerm)) {
-                    row.style.display = 'table-row';
-                } else {
-                    row.style.display = 'none';
-                }
+        // Gestione dei flag Mazzo/Pianta
+        bouquetFlag.addEventListener('click', () => setProductType('Mazzo'));
+        plantFlag.addEventListener('click', () => setProductType('Pianta'));
+
+        // Gestione dello scanner
+        cameraScanBtn.addEventListener('click', () => {
+            qrReaderContainer.style.display = 'flex';
+            const constraints = {
+                facingMode: "environment"
+            };
+            html5QrCode = new Html5Qrcode("qr-reader");
+
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                beepSound.play();
+                eanCodeInput.value = decodedText;
+                stopScanner();
+                showToast('Codice a barre acquisito!');
+            };
+
+            const qrCodeErrorCallback = (errorMessage) => {
+                // Log per debug, non mostrare all'utente
+                console.log(errorMessage);
+            };
+
+            const config = {
+                fps: 10,
+                qrbox: { width: 300, height: 150 },
+                supportedScanTypes: [
+                    Html5Qrcode.ScanType.CODE_128,
+                    Html5Qrcode.ScanType.EAN_13,
+                    Html5Qrcode.ScanType.EAN_8,
+                    Html5Qrcode.ScanType.CODE_39,
+                    Html5Qrcode.ScanType.UPC_A,
+                    Html5Qrcode.ScanType.UPC_E,
+                    Html5Qrcode.ScanType.QR_CODE
+                ]
+            };
+
+            html5QrCode.start(
+                constraints,
+                config,
+                qrCodeSuccessCallback,
+                qrCodeErrorCallback
+            ).catch(err => {
+                console.error("Errore nell'avvio della fotocamera.", err);
+                alert("Errore nell'avvio della fotocamera. Assicurati di aver concesso i permessi.");
+                stopScanner();
             });
         });
 
-        // Carica i dati all'avvio dell'app
-        document.addEventListener('DOMContentLoaded', () => {
-          loadFromLocalStorage();
-          updateFlagState(); // Imposta lo stato iniziale dei campi
+        closeScannerBtn.addEventListener('click', () => {
+            stopScanner();
         });
+
+        // Gestione della ricerca
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredPrices = prices.filter(price => {
+                return Object.values(price).some(value => 
+                    String(value).toLowerCase().includes(searchTerm)
+                );
+            });
+            renderTable(filteredPrices);
+        });
+
+        // Carica i dati all'avvio
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+            setProductType(null); // Imposta lo stato iniziale
+        });
+
     </script>
 </body>
 </html>
