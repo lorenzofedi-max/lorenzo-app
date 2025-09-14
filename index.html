@@ -255,6 +255,12 @@
             border-radius: 0.75rem;
             cursor: pointer;
         }
+        #scanner-status {
+            color: #d1d5db;
+            text-align: center;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
         
     </style>
 </head>
@@ -534,7 +540,8 @@
     <!-- Scanner EAN -->
     <div id="qr-reader-container" class="hidden">
         <div class="flex flex-col items-center justify-center h-full">
-            <div id="qr-reader" class="rounded-xl overflow-hidden" style="border: 2px solid red;"></div>
+            <div id="qr-reader" class="rounded-xl overflow-hidden"></div>
+            <div id="scanner-status" class="text-white text-center mt-4"></div>
             <button id="close-scanner-btn" class="scanner-close-button mt-4">Chiudi</button>
         </div>
     </div>
@@ -570,6 +577,7 @@
         const stemsGroup = document.getElementById('stemsGroup');
         const vaseGroup = document.getElementById('vaseGroup');
         const qrReaderContainer = document.getElementById('qr-reader-container');
+        const scannerStatus = document.getElementById('scanner-status');
         const qrReader = document.getElementById('qr-reader');
         const closeScannerBtn = document.getElementById('close-scanner-btn');
         const searchInput = document.getElementById('searchInput');
@@ -690,18 +698,19 @@
         // Funzione per avviare lo scanner EAN
         function startScanner() {
             qrReaderContainer.style.display = 'flex';
+            scannerStatus.textContent = "Caricamento fotocamera...";
             html5QrCode = new Html5Qrcode("qr-reader");
             const config = { 
                 fps: 10, 
                 qrbox: { width: 300, height: 150 },
                 supportedScanTypes: [
-                    Html5Qrcode.ScanType.CODE_128,
-                    Html5Qrcode.ScanType.EAN_13,
-                    Html5Qrcode.ScanType.EAN_8,
-                    Html5Qrcode.ScanType.CODE_39,
-                    Html5Qrcode.ScanType.UPC_A,
-                    Html5Qrcode.ScanType.UPC_E,
-                    Html5Qrcode.ScanType.QR_CODE
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.QR_CODE
                 ]
             };
         
@@ -722,17 +731,8 @@
             ).catch((err) => {
                 // Errore all'avvio della fotocamera
                 console.error("Errore all'avvio della fotocamera:", err);
-                const dialog = document.getElementById('confirmationDialog');
-                dialog.querySelector('p').textContent = "Errore nell'avvio della fotocamera. Assicurati di aver concesso i permessi.";
-                dialog.querySelector('#confirmDeleteBtn').style.display = 'none';
-                dialog.querySelector('#cancelDeleteBtn').textContent = 'OK';
-                dialog.classList.add('show');
-                dialog.querySelector('#cancelDeleteBtn').onclick = () => {
-                    dialog.classList.remove('show');
-                    dialog.querySelector('#confirmDeleteBtn').style.display = 'inline';
-                    dialog.querySelector('#cancelDeleteBtn').textContent = 'Annulla';
-                };
                 stopScanner();
+                showToast("Errore: Impossibile avviare la fotocamera. Controlla i permessi.");
             });
         
             closeScannerBtn.addEventListener('click', stopScanner);
@@ -743,12 +743,15 @@
             if (html5QrCode && html5QrCode.isScanning) {
                 html5QrCode.stop().then(() => {
                     qrReaderContainer.style.display = 'none';
+                    scannerStatus.textContent = "";
                 }).catch(err => {
                     console.error("Errore nello stop della fotocamera:", err);
                     qrReaderContainer.style.display = 'none';
+                    scannerStatus.textContent = "";
                 });
             } else {
                 qrReaderContainer.style.display = 'none';
+                scannerStatus.textContent = "";
             }
         }
         
