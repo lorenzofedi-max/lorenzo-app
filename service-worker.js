@@ -1,42 +1,44 @@
-const cacheName = 'prezzi-v1';
-const assets = [
-'./',
-'./index.html',
-'./manifest.json',
-'./logo_48x48.png',
-'./logo_72x72.png',
-'./logo_96x96.png',
-'./logo_120x120.png',
-'./logo_144x144.png',
-'./logo_152x152.png',
-'./logo_180x180.png',
-'./logo_192x192.png',
-'./logo_512x512.png'
+const cacheName = 'prezzi-app-v1';
+const filesToCache = [
+  './',
+  './index.html',
+  './manifest.json',
+  './logo_120x120.png',
+  './logo_152x152.png',
+  './logo_180x180.png',
+  './logo_48x48.png',
+  './logo_192x192.png',
+  './logo_512x512.png',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/html5-qrcode'
 ];
-self.addEventListener('install', (event) => {
-event.waitUntil(
-caches.open(cacheName).then((cache) => {
-console.log('[Service Worker] Caching all assets');
-return cache.addAll(assets);
-})
-);
+
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(cacheName).then((cache) => {
+      console.log('[ServiceWorker] Caching all: app shell and content');
+      return cache.addAll(filesToCache);
+    })
+  );
 });
-self.addEventListener('fetch', (event) => {
-event.respondWith(
-caches.match(event.request).then((response) => {
-return response || fetch(event.request);
-})
-);
+
+self.addEventListener('fetch', (e) => {
+  e.respondWith(
+    caches.match(e.request).then((response) => {
+      return response || fetch(e.request);
+    })
+  );
 });
-self.addEventListener('activate', (event) => {
-event.waitUntil(
-caches.keys().then((keyList) => {
-return Promise.all(keyList.map((key) => {
-if (key !== cacheName) {
-console.log('[Service Worker] Removing old cache', key);
-return caches.delete(key);
-}
-}));
-})
-);
+
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((keyList) => {
+      return Promise.all(keyList.map((key) => {
+        if (key !== cacheName) {
+          console.log('[ServiceWorker] Removing old cache', key);
+          return caches.delete(key);
+        }
+      }));
+    })
+  );
 });

@@ -28,6 +28,7 @@
       }
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
@@ -210,6 +211,39 @@
             width: 100px;
             height: 100px;
             border-radius: 50%;
+        }
+        /* Stili per il modale dello scanner */
+        #scannerModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            gap: 1rem;
+        }
+        #qr-reader {
+            width: 90%;
+            max-width: 500px;
+            border: 2px solid white;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        .scanner-btn-close {
+            background-color: #ef4444;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .scanner-btn-close:hover {
+            background-color: #dc2626;
         }
     </style>
 </head>
@@ -483,6 +517,15 @@
         </div>
     </div>
 
+    <!-- Scanner Modal -->
+    <div id="scannerModal" class="dialog hidden">
+        <div class="dialog-content p-4">
+            <h3 class="text-xl font-medium mb-4">Scansiona Codice a Barre</h3>
+            <div id="qr-reader"></div>
+            <button id="closeScannerBtn" class="scanner-btn-close mt-4">Annulla</button>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" role="alert">Salvataggio riuscito!</div>
 
@@ -517,6 +560,11 @@
         const stemsGroup = document.getElementById('stemsGroup');
         const vaseGroup = document.getElementById('vaseGroup');
         const typeSpecificFields = document.getElementById('typeSpecificFields');
+        const scannerModal = document.getElementById('scannerModal');
+        const closeScannerBtn = document.getElementById('closeScannerBtn');
+        const qrReader = document.getElementById('qr-reader');
+        let html5QrCodeScanner = null;
+
         let isBouquet = false;
         let isPlant = false;
 
@@ -614,11 +662,33 @@
 
         // Funzionalità per l'acquisizione tramite camera
         cameraScanBtn.addEventListener('click', () => {
-            const eanCode = prompt("Simulazione: inserisci il codice EAN (es. 8000000000018)");
-            if (eanCode) {
-                eanCodeInput.value = eanCode;
-            }
+            scannerModal.classList.remove('hidden');
+            scannerModal.style.display = 'flex';
+            
+            // Inizializza lo scanner
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                eanCodeInput.value = decodedText;
+                closeScanner();
+            };
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            html5QrCodeScanner = new Html5Qrcode("qr-reader");
+            html5QrCodeScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
         });
+
+        closeScannerBtn.addEventListener('click', () => {
+            closeScanner();
+        });
+
+        function closeScanner() {
+            if (html5QrCodeScanner) {
+                html5QrCodeScanner.stop().then(() => {
+                    console.log("QR Code scanner stopped.");
+                }).catch(err => {
+                    console.error("Failed to stop scanner", err);
+                });
+            }
+            scannerModal.classList.add('hidden');
+        }
 
         // Funzione per mostrare la notifica "Salvataggio riuscito"
         function showToast() {
