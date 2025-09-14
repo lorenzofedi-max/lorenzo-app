@@ -656,8 +656,11 @@
             currentType = null;
             bouquetFlag.classList.remove('active');
             plantFlag.classList.remove('active');
+            stemsGroup.querySelector('input').disabled = false;
+            vaseGroup.querySelector('input').disabled = false;
             stemsGroup.classList.remove('hidden');
             vaseGroup.classList.remove('hidden');
+            itemNameInput.removeAttribute('list');
         }
 
         // Funzione per impostare la tipologia e gestire i campi
@@ -666,34 +669,39 @@
             if (type === 'Mazzo') {
                 bouquetFlag.classList.add('active');
                 plantFlag.classList.remove('active');
-                stemsGroup.querySelector('input').disabled = false;
-                vaseGroup.querySelector('input').disabled = true;
-                vaseGroup.querySelector('input').value = '';
+                stemsGroup.classList.remove('hidden');
+                vaseGroup.classList.add('hidden');
+                itemNameInput.setAttribute('list', 'cutFlowersList');
             } else if (type === 'Pianta') {
                 bouquetFlag.classList.remove('active');
                 plantFlag.classList.add('active');
-                stemsGroup.querySelector('input').disabled = true;
-                stemsGroup.querySelector('input').value = '';
-                vaseGroup.querySelector('input').disabled = false;
+                stemsGroup.classList.add('hidden');
+                vaseGroup.classList.remove('hidden');
+                itemNameInput.setAttribute('list', 'plantList');
             } else {
-                // Caso di reset o nessuna selezione
                 bouquetFlag.classList.remove('active');
                 plantFlag.classList.remove('active');
-                stemsGroup.querySelector('input').disabled = false;
-                vaseGroup.querySelector('input').disabled = false;
+                stemsGroup.classList.remove('hidden');
+                vaseGroup.classList.remove('hidden');
+                itemNameInput.removeAttribute('list');
             }
         }
         
         // Funzione per avviare lo scanner EAN
         function startScanner() {
             qrReaderContainer.style.display = 'flex';
-            const html5QrCode = new Html5Qrcode("qr-reader");
+            html5QrCode = new Html5Qrcode("qr-reader");
             const config = { 
                 fps: 10, 
                 qrbox: { width: 300, height: 150 },
                 supportedScanTypes: [
                     Html5Qrcode.ScanType.CODE_128,
-                    Html5Qrcode.ScanType.EAN_13
+                    Html5Qrcode.ScanType.EAN_13,
+                    Html5Qrcode.ScanType.EAN_8,
+                    Html5Qrcode.ScanType.CODE_39,
+                    Html5Qrcode.ScanType.UPC_A,
+                    Html5Qrcode.ScanType.UPC_E,
+                    Html5Qrcode.ScanType.QR_CODE
                 ]
             };
         
@@ -708,14 +716,22 @@
                     showToast('EAN acquisito!');
                 },
                 (errorMessage) => {
-                    // Fallimento della scansione
-                    // Non mostriamo un errore all'utente, ma gestiamo internamente
-                    //console.log(errorMessage);
+                    // Fallimento della scansione (solo per debug)
+                    // console.log(errorMessage);
                 }
             ).catch((err) => {
                 // Errore all'avvio della fotocamera
                 console.error("Errore all'avvio della fotocamera:", err);
-                alert("Errore nell'avvio della fotocamera. Assicurati di aver concesso i permessi.");
+                const dialog = document.getElementById('confirmationDialog');
+                dialog.querySelector('p').textContent = "Errore nell'avvio della fotocamera. Assicurati di aver concesso i permessi.";
+                dialog.querySelector('#confirmDeleteBtn').style.display = 'none';
+                dialog.querySelector('#cancelDeleteBtn').textContent = 'OK';
+                dialog.classList.add('show');
+                dialog.querySelector('#cancelDeleteBtn').onclick = () => {
+                    dialog.classList.remove('show');
+                    dialog.querySelector('#confirmDeleteBtn').style.display = 'inline';
+                    dialog.querySelector('#cancelDeleteBtn').textContent = 'Annulla';
+                };
                 stopScanner();
             });
         
@@ -724,7 +740,7 @@
 
         // Funzione per fermare lo scanner
         function stopScanner() {
-            if (html5QrCode) {
+            if (html5QrCode && html5QrCode.isScanning) {
                 html5QrCode.stop().then(() => {
                     qrReaderContainer.style.display = 'none';
                 }).catch(err => {
@@ -751,8 +767,8 @@
                 storeName: storeNameInput.value,
                 type: currentType,
                 itemName: itemNameInput.value,
-                stemsCount: stemsCountInput.disabled ? null : stemsCountInput.value,
-                vaseDiameter: vaseDiameterInput.disabled ? null : vaseDiameterInput.value,
+                stemsCount: currentType === 'Mazzo' ? stemsCountInput.value : null,
+                vaseDiameter: currentType === 'Pianta' ? vaseDiameterInput.value : null,
                 priceValue: priceValueInput.value,
                 supplierName: supplierNameInput.value,
                 eanCode: eanCodeInput.value,
@@ -769,10 +785,7 @@
         priceReportTable.addEventListener('click', (e) => {
             if (e.target.closest('.delete-btn')) {
                 const index = e.target.closest('.delete-btn').dataset.index;
-                // Mostra il dialog di conferma prima di eliminare
                 confirmationDialog.classList.add('show');
-
-                // Gestione della conferma di eliminazione
                 confirmDeleteBtn.onclick = () => {
                     prices.splice(index, 1);
                     saveData();
@@ -780,8 +793,6 @@
                     confirmationDialog.classList.remove('show');
                     showToast('Elemento eliminato!');
                 };
-                
-                // Gestione dell'annullamento
                 cancelDeleteBtn.onclick = () => {
                     confirmationDialog.classList.remove('show');
                 };
@@ -790,7 +801,16 @@
         
         exportCsvBtn.addEventListener('click', () => {
             if (prices.length === 0) {
-                alert('Nessun dato da esportare!');
+                const dialog = document.getElementById('confirmationDialog');
+                dialog.querySelector('p').textContent = "Nessun dato da esportare!";
+                dialog.querySelector('#confirmDeleteBtn').style.display = 'none';
+                dialog.querySelector('#cancelDeleteBtn').textContent = 'OK';
+                dialog.classList.add('show');
+                dialog.querySelector('#cancelDeleteBtn').onclick = () => {
+                    dialog.classList.remove('show');
+                    dialog.querySelector('#confirmDeleteBtn').style.display = 'inline';
+                    dialog.querySelector('#cancelDeleteBtn').textContent = 'Annulla';
+                };
                 return;
             }
             
@@ -833,50 +853,7 @@
         plantFlag.addEventListener('click', () => setProductType('Pianta'));
 
         // Gestione dello scanner
-        cameraScanBtn.addEventListener('click', () => {
-            qrReaderContainer.style.display = 'flex';
-            const constraints = {
-                facingMode: "environment"
-            };
-            html5QrCode = new Html5Qrcode("qr-reader");
-
-            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-                beepSound.play();
-                eanCodeInput.value = decodedText;
-                stopScanner();
-                showToast('Codice a barre acquisito!');
-            };
-
-            const qrCodeErrorCallback = (errorMessage) => {
-                // Log per debug, non mostrare all'utente
-                console.log(errorMessage);
-            };
-
-            const config = {
-                fps: 10,
-                qrbox: { width: 300, height: 150 },
-                supportedScanTypes: [
-                    Html5Qrcode.ScanType.CODE_128,
-                    Html5Qrcode.ScanType.EAN_13,
-                    Html5Qrcode.ScanType.EAN_8,
-                    Html5Qrcode.ScanType.CODE_39,
-                    Html5Qrcode.ScanType.UPC_A,
-                    Html5Qrcode.ScanType.UPC_E,
-                    Html5Qrcode.ScanType.QR_CODE
-                ]
-            };
-
-            html5QrCode.start(
-                constraints,
-                config,
-                qrCodeSuccessCallback,
-                qrCodeErrorCallback
-            ).catch(err => {
-                console.error("Errore nell'avvio della fotocamera.", err);
-                alert("Errore nell'avvio della fotocamera. Assicurati di aver concesso i permessi.");
-                stopScanner();
-            });
-        });
+        cameraScanBtn.addEventListener('click', startScanner);
 
         closeScannerBtn.addEventListener('click', () => {
             stopScanner();
@@ -898,7 +875,6 @@
             loadData();
             setProductType(null); // Imposta lo stato iniziale
         });
-
     </script>
 </body>
 </html>
