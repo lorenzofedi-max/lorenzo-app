@@ -219,7 +219,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: white; /* Sfondo bianco per nascondere il contenuto dietro */
+            background-color: white;
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -234,6 +234,24 @@
             border-radius: 0.75rem;
             overflow: hidden;
         }
+        /* Stili per il bordo colorato dello scanner */
+        #qr-reader-overlay {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        #qr-reader-overlay .scan-area {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            height: 150px; /* Altezza fissa */
+            max-width: 250px; /* Larghezza massima */
+            border: 4px solid #ef4444; /* Bordo rosso di default */
+            border-radius: 0.75rem;
+            transition: border-color 0.3s;
+        }
         .scanner-btn-close {
             background-color: #ef4444;
             color: white;
@@ -244,6 +262,38 @@
         }
         .scanner-btn-close:hover {
             background-color: #dc2626;
+        }
+        .ean-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .ean-input-group .price-input {
+            padding-right: 3rem; /* Spazio per l'icona */
+        }
+        .ean-input-group .camera-icon-btn {
+            position: absolute;
+            right: 0.5rem;
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+        .ean-input-group .camera-icon-btn svg {
+            width: 1.5rem;
+            height: 1.5rem;
+            fill: #4b5563;
+        }
+        /* Stili per i campi Steli e Vaso */
+        #typeSpecificFields {
+            display: flex;
+            flex-direction: row;
+            gap: 1.5rem;
+            width: 100%;
+        }
+        #typeSpecificFields .form-group {
+            flex: 1;
+            margin-bottom: 0;
         }
     </style>
 </head>
@@ -446,7 +496,14 @@
                 </div>
                 <div class="form-group flex-1">
                     <label for="eanCode" class="block text-gray-700 font-medium mb-1">Codice a Barre (EAN)</label>
-                    <input type="text" id="eanCode" class="price-input" placeholder="Inserisci il codice EAN">
+                    <div class="relative ean-input-group">
+                        <input type="text" id="eanCode" class="price-input" placeholder="Inserisci il codice EAN">
+                        <button id="cameraScanBtn" class="camera-icon-btn">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                                <path d="M149.1 64.8L138.7 96H64C28.7 96 0 124.7 0 160V416c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V160c0-35.3-28.7-64-64-64H373.3L362.9 64.8C356.6 45.4 338.4 32 318.2 32H193.8c-20.2 0-38.4 13.4-44.7 32.8zM256 192a96 96 0 1 1 0 192 96 96 0 1 1 0-192z"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
            
@@ -461,9 +518,6 @@
         
         <!-- Pulsanti Registra e Camera -->
         <div class="mb-6 flex flex-col sm:flex-row gap-4">
-            <button id="cameraScanBtn" class="bg-gray-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-gray-700 transition-colors flex-1">
-                Acquisizione EAN
-            </button>
             <button id="saveBtn" class="bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex-1">
                 Registra
             </button>
@@ -519,7 +573,12 @@
 
     <!-- Scanner Modal -->
     <div id="scannerModal" class="fixed inset-0 bg-white flex flex-col items-center justify-start pt-16 z-50 hidden">
-        <div id="qr-reader" class="w-11/12 max-w-sm rounded-lg overflow-hidden border-2 border-gray-300"></div>
+        <div id="qr-reader-container" class="w-11/12 max-w-sm">
+            <div id="qr-reader"></div>
+            <div id="qr-reader-overlay">
+                <div class="scan-area"></div>
+            </div>
+        </div>
         <button id="closeScannerBtn" class="bg-red-500 text-white font-bold py-3 px-6 rounded-lg mt-8 shadow-lg hover:bg-red-600 transition">Annulla</button>
     </div>
 
@@ -560,6 +619,8 @@
         const scannerModal = document.getElementById('scannerModal');
         const closeScannerBtn = document.getElementById('closeScannerBtn');
         const qrReader = document.getElementById('qr-reader');
+        const scanArea = document.querySelector('.scan-area');
+        
         let html5QrCodeScanner = null;
 
         let isBouquet = false;
@@ -596,24 +657,27 @@
         
         function updateFlagState() {
             itemNameInput.value = '';
-            typeSpecificFields.classList.remove('hidden');
             
             if (isBouquet) {
                 bouquetFlag.classList.add('active');
                 plantFlag.classList.remove('active');
+                typeSpecificFields.classList.remove('hidden');
                 stemsGroup.classList.remove('hidden');
                 vaseGroup.classList.add('hidden');
                 vaseTypeInput.value = '';
+                vaseTypeInput.disabled = true;
+                stemsCountInput.disabled = false;
                 itemNameInput.setAttribute('list', 'cutFlowersList');
-                vaseTypeInput.removeAttribute('list');
             } else if (isPlant) {
                 plantFlag.classList.add('active');
                 bouquetFlag.classList.remove('active');
+                typeSpecificFields.classList.remove('hidden');
                 vaseGroup.classList.remove('hidden');
                 stemsGroup.classList.add('hidden');
                 stemsCountInput.value = '';
+                stemsCountInput.disabled = true;
+                vaseTypeInput.disabled = false;
                 itemNameInput.setAttribute('list', 'plantList');
-                vaseTypeInput.setAttribute('list', 'vaseDiameterList');
             } else {
                 bouquetFlag.classList.remove('active');
                 plantFlag.classList.remove('active');
@@ -622,8 +686,9 @@
                 typeSpecificFields.classList.add('hidden');
                 stemsCountInput.value = '';
                 vaseTypeInput.value = '';
+                stemsCountInput.disabled = false;
+                vaseTypeInput.disabled = false;
                 itemNameInput.removeAttribute('list');
-                vaseTypeInput.removeAttribute('list');
             }
         }
 
@@ -664,9 +729,13 @@
             // Inizializza lo scanner
             const qrCodeSuccessCallback = (decodedText, decodedResult) => {
                 eanCodeInput.value = decodedText;
-                closeScanner();
+                scanArea.style.borderColor = '#10b981'; // Imposta il bordo a verde
+                setTimeout(() => {
+                    closeScanner();
+                    scanArea.style.borderColor = '#ef4444'; // Resetta il bordo a rosso
+                }, 500);
             };
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            const config = { fps: 10, qrbox: { width: 250, height: 150 } };
             html5QrCodeScanner = new Html5Qrcode("qr-reader");
             html5QrCodeScanner.start({ facingMode: "environment" }, config, qrCodeSuccessCallback);
         });

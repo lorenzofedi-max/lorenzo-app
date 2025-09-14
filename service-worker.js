@@ -1,4 +1,4 @@
-const cacheName = 'prezzi-app-v2';
+const cacheName = 'prezzi-app-v3';
 const filesToCache = [
   './',
   './index.html',
