@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rilevamento Prezzi</title>
+    <!-- Tag per l'icona della PWA su iOS -->
+    <link rel="apple-touch-icon" href="/logo_180x180.png">
+    <link rel="apple-touch-icon-precomposed" href="/logo_180x180.png">
+    
     <!-- Aggiunti per la PWA -->
     <link rel="manifest" href="manifest.json">
     <script>
@@ -479,32 +483,32 @@
     <script type="module">
         // Importa le librerie Firebase necessarie
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // La tua configurazione Firebase (copiata dal tuo progetto)
-        const firebaseConfig = {
-            apiKey: "AIzaSyBmATva-xbp7zQK2PydbpRhU9-LJFUuUd8",
-            authDomain: "rilevamento-prezzi.firebaseapp.com",
-            projectId: "rilevamento-prezzi",
-            storageBucket: "rilevamento-prezzi.firebasestorage.app",
-            messagingSenderId: "926435516536",
-            appId: "1:926435516536:web:8f8f752d80dcb5fca90d8d"
-        };
-        
-        // Inizializza Firebase e Firestore
-        let app, db, auth;
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-            setLogLevel('Debug');
-        } catch (error) {
-            console.error("Errore nell'inizializzazione di Firebase:", error);
-        }
-
+        // Variabili globali per l'app e l'autenticazione
+        let app;
+        let db;
+        let auth;
         let userId = null;
         let authReady = false;
+        
+        // Configurazione Firebase (usa le variabili fornite dall'ambiente)
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (firebaseConfig) {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('Debug');
+            } catch (error) {
+                console.error("Errore nell'inizializzazione di Firebase:", error);
+            }
+        } else {
+            console.error("Configurazione Firebase non disponibile. L'app potrebbe non funzionare correttamente.");
+        }
 
         // Elementi UI
         const saveBtn = document.getElementById('saveBtn');
@@ -536,6 +540,7 @@
         let isPlant = false;
 
         let itemToDeleteId = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // Gestione delle icone flag
         bouquetFlag.addEventListener('click', () => {
@@ -603,9 +608,10 @@
 
         // Gestori eventi per il dialogo
         confirmDeleteBtn.addEventListener('click', async () => {
-            if (itemToDeleteId) {
+            if (itemToDeleteId && db && userId) {
                 try {
-                    await deleteDoc(doc(db, "prices", itemToDeleteId));
+                    const priceRef = doc(db, "artifacts", appId, "public", "data", "prices", itemToDeleteId);
+                    await deleteDoc(priceRef);
                     console.log("Documento eliminato con successo!");
                 } catch (error) {
                     console.error("Errore durante l'eliminazione del documento:", error);
@@ -648,8 +654,8 @@
 
         // Aggiungi un nuovo prezzo
         saveBtn.addEventListener('click', async () => {
-            if (!authReady) {
-                console.error("L'autenticazione non è ancora pronta.");
+            if (!authReady || !db || !userId) {
+                console.error("L'autenticazione o il database non sono ancora pronti.");
                 return;
             }
 
@@ -706,7 +712,7 @@
                     timestamp: new Date().getTime(),
                     userId: userId
                 };
-                await addDoc(collection(db, "prices"), newPrice);
+                await addDoc(collection(db, "artifacts", appId, "public", "data", "prices"), newPrice);
                 console.log("Dati aggiunti con successo.");
                 showToast();
                 // Resetta i campi del prodotto lasciando Catena e Negozio
@@ -718,13 +724,13 @@
 
         // Funzione per esportare i dati in formato CSV
         exportCsvBtn.addEventListener('click', async () => {
-            if (!authReady) {
-                console.error("L'autenticazione non è ancora pronta.");
+            if (!authReady || !db) {
+                console.error("L'autenticazione o il database non sono ancora pronti.");
                 return;
             }
 
             try {
-                const pricesCollection = collection(db, "prices");
+                const pricesCollection = collection(db, "artifacts", appId, "public", "data", "prices");
                 const querySnapshot = await getDocs(pricesCollection);
                 
                 let csvContent = "data:text/csv;charset=utf-8,";
@@ -777,7 +783,7 @@
                 return;
             }
 
-            const q = query(collection(db, "prices"));
+            const q = query(collection(db, "artifacts", appId, "public", "data", "prices"));
             
             onSnapshot(q, (querySnapshot) => {
                 const prices = [];
@@ -833,29 +839,31 @@
 
         // Funzione di avvio dell'app
         async function startApp() {
-            try {
-                await signInAnonymously(auth);
+            if (!auth || !db) {
+                console.error("Impossibile avviare l'app: Firebase non inizializzato.");
+                return;
+            }
 
-                // Ascolta i cambiamenti di stato dell'autenticazione
-                if (auth) {
-                    onAuthStateChanged(auth, user => {
-                        if (user) {
-                            userId = user.uid;
-                            authReady = true;
-                            console.log("Utente autenticato. User ID:", userId);
-                            setupRealtimeListener();
-                        } else {
-                            console.log("Nessun utente autenticato.");
-                            authReady = false;
-                        }
-                    });
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
                 } else {
-                    console.error("Oggetto di autenticazione non disponibile.");
+                    await signInAnonymously(auth);
                 }
 
+                onAuthStateChanged(auth, user => {
+                    if (user) {
+                        userId = user.uid;
+                        authReady = true;
+                        console.log("Utente autenticato. User ID:", userId);
+                        setupRealtimeListener();
+                    } else {
+                        console.log("Nessun utente autenticato.");
+                        authReady = false;
+                    }
+                });
             } catch (error) {
-                // Questo errore si verifica se l'autenticazione anonima non è abilitata.
-                console.error("Errore di autenticazione: Assicurati che il metodo di accesso 'Anonimo' sia abilitato nel tuo progetto Firebase.", error);
+                console.error("Errore di autenticazione:", error);
             }
         }
 
