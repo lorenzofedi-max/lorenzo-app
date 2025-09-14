@@ -480,35 +480,10 @@
     <!-- Toast Notification -->
     <div id="toast" role="alert">Salvataggio riuscito!</div>
 
-    <script type="module">
-        // Importa le librerie Firebase necessarie
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, deleteDoc, doc, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Variabili globali per l'app e l'autenticazione
-        let app;
-        let db;
-        let auth;
-        let userId = null;
-        let authReady = false;
-        
-        // Configurazione Firebase (usa le variabili fornite dall'ambiente)
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        if (firebaseConfig) {
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                setLogLevel('Debug');
-            } catch (error) {
-                console.error("Errore nell'inizializzazione di Firebase:", error);
-            }
-        } else {
-            console.error("Configurazione Firebase non disponibile. L'app potrebbe non funzionare correttamente.");
-        }
+    <script>
+        // Array globale per memorizzare i dati
+        let prices = [];
+        const localStorageKey = 'rilevamentoPrezziData';
 
         // Elementi UI
         const saveBtn = document.getElementById('saveBtn');
@@ -540,7 +515,20 @@
         let isPlant = false;
 
         let itemToDeleteId = null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Funzione per salvare i dati in localStorage
+        function saveToLocalStorage() {
+            localStorage.setItem(localStorageKey, JSON.stringify(prices));
+        }
+
+        // Funzione per caricare i dati da localStorage all'avvio dell'app
+        function loadFromLocalStorage() {
+            const storedData = localStorage.getItem(localStorageKey);
+            if (storedData) {
+                prices = JSON.parse(storedData);
+            }
+            updateTable();
+        }
 
         // Gestione delle icone flag
         bouquetFlag.addEventListener('click', () => {
@@ -589,8 +577,8 @@
         }
 
         // Funzione per mostrare il dialogo di conferma
-        function showConfirmationDialog(docId) {
-            itemToDeleteId = docId;
+        function showConfirmationDialog(index) {
+            itemToDeleteId = index;
             confirmationDialog.style.display = 'flex';
             setTimeout(() => {
                 confirmationDialog.classList.add('show');
@@ -607,15 +595,11 @@
         }
 
         // Gestori eventi per il dialogo
-        confirmDeleteBtn.addEventListener('click', async () => {
-            if (itemToDeleteId && db && userId) {
-                try {
-                    const priceRef = doc(db, "artifacts", appId, "public", "data", "prices", itemToDeleteId);
-                    await deleteDoc(priceRef);
-                    console.log("Documento eliminato con successo!");
-                } catch (error) {
-                    console.error("Errore durante l'eliminazione del documento:", error);
-                }
+        confirmDeleteBtn.addEventListener('click', () => {
+            if (itemToDeleteId !== null) {
+                prices.splice(itemToDeleteId, 1);
+                updateTable();
+                saveToLocalStorage(); // Salva dopo l'eliminazione
             }
             hideConfirmationDialog();
         });
@@ -651,14 +635,51 @@
             isPlant = false;
             updateFlagState();
         }
+        
+        // Funzione per aggiornare la tabella dei prezzi
+        function updateTable() {
+            priceReportTable.innerHTML = '';
+            
+            prices.forEach((price, index) => {
+                const type = price.mazzo ? 'Mazzo' : 'Pianta';
+                const date = new Date(price.timestamp).toLocaleDateString('it-IT');
+
+                const newRow = document.createElement('tr');
+                
+                newRow.innerHTML = `
+                    <td>${date}</td>
+                    <td>${price.catena}</td>
+                    <td>${price.negozio}</td>
+                    <td>${type}</td>
+                    <td>${price.articolo}</td>
+                    <td>${price.nSteli || '-'}</td>
+                    <td>${price.vaso || '-'}</td>
+                    <td class="price-cell">€${price.prezzo.toFixed(2)}</td>
+                    <td>${price.fornitore || '-'}</td>
+                    <td>${price.eanCode || '-'}</td>
+                    <td>${price.note || '-'}</td>
+                    <td class="delete-btn-cell">
+                       <button class="delete-btn" data-index="${index}">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                priceReportTable.appendChild(newRow);
+            });
+
+            // Aggiungi event listener per l'eliminazione
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = e.currentTarget.dataset.index;
+                    showConfirmationDialog(index);
+                });
+            });
+        }
 
         // Aggiungi un nuovo prezzo
-        saveBtn.addEventListener('click', async () => {
-            if (!authReady || !db || !userId) {
-                console.error("L'autenticazione o il database non sono ancora pronti.");
-                return;
-            }
-
+        saveBtn.addEventListener('click', () => {
             // Rimuovi eventuali classi di errore precedenti
             document.querySelectorAll('.price-input').forEach(input => input.classList.remove('border-red-500'));
             validationError.classList.add('hidden');
@@ -696,69 +717,59 @@
                 return;
             }
 
-            try {
-                const newPrice = {
-                    catena: storeChain,
-                    negozio: storeName,
-                    articolo: itemName,
-                    nSteli: isBouquet ? stemsCount : '',
-                    vaso: isPlant ? vaseType : '',
-                    prezzo: price,
-                    fornitore: supplierName,
-                    eanCode: eanCode,
-                    note: notes,
-                    mazzo: isBouquet,
-                    pianta: isPlant,
-                    timestamp: new Date().getTime(),
-                    userId: userId
-                };
-                await addDoc(collection(db, "artifacts", appId, "public", "data", "prices"), newPrice);
-                console.log("Dati aggiunti con successo.");
-                showToast();
-                // Resetta i campi del prodotto lasciando Catena e Negozio
-                resetProductFields();
-            } catch (e) {
-                console.error("Errore nell'aggiunta del documento: ", e);
-            }
+            const newPrice = {
+                catena: storeChain,
+                negozio: storeName,
+                articolo: itemName,
+                nSteli: isBouquet ? stemsCount : '',
+                vaso: isPlant ? vaseType : '',
+                prezzo: price,
+                fornitore: supplierName,
+                eanCode: eanCode,
+                note: notes,
+                mazzo: isBouquet,
+                pianta: isPlant,
+                timestamp: new Date().getTime(),
+            };
+            
+            prices.unshift(newPrice); // Aggiungi il nuovo prezzo all'inizio dell'array
+            updateTable();
+            saveToLocalStorage(); // Salva dopo l'aggiunta
+            showToast();
+            resetProductFields();
         });
 
         // Funzione per esportare i dati in formato CSV
-        exportCsvBtn.addEventListener('click', async () => {
-            if (!authReady || !db) {
-                console.error("L'autenticazione o il database non sono ancora pronti.");
+        exportCsvBtn.addEventListener('click', () => {
+            if (prices.length === 0) {
+                alert('Non ci sono dati da esportare.');
                 return;
             }
+            
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Data,Catena,Negozio,Tipologia,Articolo,N° Steli,Vaso,Prezzo,Fornitore,Codice a Barre (EAN),Note\n";
 
-            try {
-                const pricesCollection = collection(db, "artifacts", appId, "public", "data", "prices");
-                const querySnapshot = await getDocs(pricesCollection);
-                
-                let csvContent = "data:text/csv;charset=utf-8,";
-                csvContent += "Data,Catena,Negozio,Tipologia,Articolo,N° Steli,Vaso,Prezzo,Fornitore,Codice a Barre (EAN),Note\n";
+            prices.forEach(data => {
+                const date = new Date(data.timestamp).toLocaleDateString('it-IT');
+                const row = `"${date}","${data.catena}","${data.negozio}","${data.mazzo ? 'Mazzo' : 'Pianta'}", "${data.articolo}","${data.nSteli}","${data.vaso}",${data.prezzo},"${data.fornitore}","${data.eanCode}","${data.note}"\n`;
+                csvContent += row;
+            });
 
-                querySnapshot.forEach(doc => {
-                    const data = doc.data();
-                    const date = new Date(data.timestamp).toLocaleDateString('it-IT');
-                    const row = `"${date}","${data.catena}","${data.negozio}","${data.mazzo ? 'Mazzo' : 'Pianta'}", "${data.articolo}","${data.nSteli}","${data.vaso}",${data.prezzo},"${data.fornitore}","${data.eanCode}","${data.note}"\n`;
-                    csvContent += row;
-                });
-
-                const encodedUri = encodeURI(csvContent);
-                const link = document.createElement("a");
-                link.setAttribute("href", encodedUri);
-                link.setAttribute("download", "rilevamento_prezzi.csv");
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                // Resetta TUTTO per il nuovo negozio
-                storeChainInput.value = '';
-                storeNameInput.value = '';
-                resetProductFields();
-
-            } catch (error) {
-                console.error("Errore durante l'esportazione in CSV:", error);
-            }
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "rilevamento_prezzi.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Resetta TUTTO per il nuovo negozio
+            storeChainInput.value = '';
+            storeNameInput.value = '';
+            prices = [];
+            saveToLocalStorage(); // Salva dopo aver resettato
+            updateTable();
+            resetProductFields();
         });
         
         // Ascolta i cambiamenti nel campo di ricerca
@@ -776,99 +787,9 @@
             });
         });
 
-        // Ascolta i cambiamenti nel database in tempo reale
-        function setupRealtimeListener() {
-            if (!db) {
-                console.error("Database non disponibile per la connessione in tempo reale.");
-                return;
-            }
+        // Carica i dati all'avvio dell'app
+        document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
 
-            const q = query(collection(db, "artifacts", appId, "public", "data", "prices"));
-            
-            onSnapshot(q, (querySnapshot) => {
-                const prices = [];
-                querySnapshot.forEach((doc) => {
-                    prices.push({ id: doc.id, ...doc.data() });
-                });
-                
-                // Ordina per timestamp, dal più recente al più vecchio
-                prices.sort((a, b) => b.timestamp - a.timestamp);
-
-                priceReportTable.innerHTML = '';
-                
-                prices.forEach(price => {
-                    const type = price.mazzo ? 'Mazzo' : 'Pianta';
-                    const date = new Date(price.timestamp).toLocaleDateString('it-IT');
-
-                    const newRow = document.createElement('tr');
-                    
-                    newRow.innerHTML = `
-                        <td>${date}</td>
-                        <td>${price.catena}</td>
-                        <td>${price.negozio}</td>
-                        <td>${type}</td>
-                        <td>${price.articolo}</td>
-                        <td>${price.nSteli || '-'}</td>
-                        <td>${price.vaso || '-'}</td>
-                        <td class="price-cell">€${price.prezzo.toFixed(2)}</td>
-                        <td>${price.fornitore || '-'}</td>
-                        <td>${price.eanCode || '-'}</td>
-                        <td>${price.note || '-'}</td>
-                        <td class="delete-btn-cell">
-                           <button class="delete-btn" data-id="${price.id}">
-                               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </td>
-                    `;
-                    priceReportTable.appendChild(newRow);
-                });
-
-                // Aggiungi event listener per l'eliminazione
-                document.querySelectorAll('.delete-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const docId = e.currentTarget.dataset.id;
-                        showConfirmationDialog(docId);
-                    });
-                });
-            }, (error) => {
-                console.error("Errore nel listener in tempo reale: ", error);
-            });
-        }
-
-        // Funzione di avvio dell'app
-        async function startApp() {
-            if (!auth || !db) {
-                console.error("Impossibile avviare l'app: Firebase non inizializzato.");
-                return;
-            }
-
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-
-                onAuthStateChanged(auth, user => {
-                    if (user) {
-                        userId = user.uid;
-                        authReady = true;
-                        console.log("Utente autenticato. User ID:", userId);
-                        setupRealtimeListener();
-                    } else {
-                        console.log("Nessun utente autenticato.");
-                        authReady = false;
-                    }
-                });
-            } catch (error) {
-                console.error("Errore di autenticazione:", error);
-            }
-        }
-
-        // Avvia l'app
-        startApp();
     </script>
 </body>
 </html>
