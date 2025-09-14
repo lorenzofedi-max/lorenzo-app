@@ -4,9 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rilevamento Prezzi</title>
-    <!-- Tag per l'icona della PWA su iOS -->
-    <link rel="apple-touch-icon" href="/logo_180x180.png">
-    <link rel="apple-touch-icon-precomposed" href="/logo_180x180.png">
+    <!-- Tag PWA per iOS come da suggerimento dell'amico -->
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo_120x120.png?v=4">
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo_152x152.png?v=4">
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo_180x180.png?v=4">
+    <!-- Opzionale: fallback generico per iOS -->
+    <link rel="apple-touch-icon" href="/logo_180x180.png?v=4">
+    
+    <!-- Tag icona standard per altri browser -->
+    <link rel="icon" type="image/png" sizes="48x48" href="/logo_48x48.png?v=4">
     
     <!-- Aggiunti per la PWA -->
     <link rel="manifest" href="manifest.json">
@@ -789,7 +795,6 @@
 
         // Carica i dati all'avvio dell'app
         document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
-
     </script>
 </body>
 </html>
