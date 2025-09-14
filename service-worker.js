@@ -1,44 +1,51 @@
-const cacheName = 'prezzi-app-v3';
-const filesToCache = [
-  './',
-  './index.html',
-  './manifest.json',
-  './logo_48x48.png',
-  './logo_120x120.png',
-  './logo_152x152.png',
-  './logo_180x180.png',
-  './logo_192x192.png',
-  './logo_512x512.png',
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/html5-qrcode'
+const CACHE_NAME = 'my-pwa-cache-v1';
+const ASSETS_TO_CACHE = [
+  '/',
+  'index.html',
+  'manifest.json',
+  'logo_192x192.png' 
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(cacheName).then((cache) => {
-      console.log('[ServiceWorker] Caching all: app shell and content');
-      return cache.addAll(filesToCache);
+// Installa il service worker e mette in cache i file statici
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        return cache.addAll(ASSETS_TO_CACHE);
+      })
+      .then(() => {
+        return self.skipWaiting();
+      })
+  );
+});
+
+// Attiva il service worker e rimuove le vecchie cache
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => {
-      return response || fetch(e.request);
-    })
-  );
-});
-
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keyList) => {
-      return Promise.all(keyList.map((key) => {
-        if (key !== cacheName) {
-          console.log('[ServiceWorker] Removing old cache', key);
-          return caches.delete(key);
+// Intercetta le richieste di rete e serve i file dalla cache
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Ritorna il file dalla cache se esiste
+        if (response) {
+          return response;
         }
-      }));
-    })
+        // Altrimenti, fa una richiesta di rete
+        return fetch(event.request);
+      })
   );
 });

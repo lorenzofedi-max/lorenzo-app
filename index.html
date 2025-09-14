@@ -49,7 +49,7 @@
             border-radius: 0.5rem;
             border: 1px solid #d1d5db;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, background-color 0.2s, opacity 0.2s;
             font-size: 1rem;
         }
         .price-input:focus {
@@ -57,6 +57,11 @@
         }
         .price-input.border-red-500 {
             border-color: #ef4444;
+        }
+        .price-input:disabled {
+            background-color: #f3f4f6;
+            opacity: 0.7;
+            cursor: not-allowed;
         }
         .dialog {
             display: none;
@@ -285,19 +290,21 @@
             fill: #4b5563;
         }
         /* Stili per i campi Steli e Vaso */
-        #typeSpecificFields {
+        #stems-vase-container {
             display: flex;
             flex-direction: row;
             gap: 1.5rem;
             width: 100%;
         }
-        #typeSpecificFields .form-group {
+        #stems-vase-container .form-group {
             flex: 1;
             margin-bottom: 0;
         }
     </style>
 </head>
 <body class="bg-white min-h-screen flex flex-col items-center">
+    <!-- Audio per il "bip" dello scanner -->
+    <audio id="scannerBeep" src="https://www.soundjay.com/buttons/sounds/button-2.mp3" preload="auto"></audio>
     <div class="container mt-8 p-6 bg-white rounded-xl shadow-lg w-full md:max-w-3xl">
         <!-- Riferimento all'immagine del logo nella stessa directory del file HTML -->
         <img src="./logo_192x192.png" 
@@ -465,12 +472,12 @@
             </div>
             
             <!-- Campi condizionali per Steli e Vaso -->
-            <div id="typeSpecificFields" class="flex flex-col sm:flex-row gap-6 hidden">
-                <div id="stemsGroup" class="form-group flex-1 hidden">
+            <div id="stems-vase-container">
+                <div class="form-group flex-1">
                     <label for="stemsCount" class="block text-gray-700 font-medium mb-1">N° Steli</label>
                     <input type="number" list="stemsList" id="stemsCount" class="price-input" placeholder="Seleziona o digita il numero" required>
                 </div>
-                <div id="vaseGroup" class="form-group flex-1 hidden">
+                <div class="form-group flex-1">
                     <label for="vaseType" class="block text-gray-700 font-medium mb-1">Vaso</label>
                     <input type="text" id="vaseType" class="price-input" placeholder="Seleziona o digita un vaso" required>
                 </div>
@@ -613,9 +620,10 @@
 
         const bouquetFlag = document.getElementById('bouquetFlag');
         const plantFlag = document.getElementById('plantFlag');
-        const stemsGroup = document.getElementById('stemsGroup');
-        const vaseGroup = document.getElementById('vaseGroup');
-        const typeSpecificFields = document.getElementById('typeSpecificFields');
+        const stemsGroup = stemsCountInput.closest('.form-group');
+        const vaseGroup = vaseTypeInput.closest('.form-group');
+        const scannerBeep = document.getElementById('scannerBeep');
+
         const scannerModal = document.getElementById('scannerModal');
         const closeScannerBtn = document.getElementById('closeScannerBtn');
         const qrReader = document.getElementById('qr-reader');
@@ -661,33 +669,50 @@
             if (isBouquet) {
                 bouquetFlag.classList.add('active');
                 plantFlag.classList.remove('active');
-                typeSpecificFields.classList.remove('hidden');
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.add('hidden');
-                vaseTypeInput.value = '';
-                vaseTypeInput.disabled = true;
+                
                 stemsCountInput.disabled = false;
+                stemsCountInput.required = true;
+                vaseTypeInput.disabled = true;
+                vaseTypeInput.required = false;
+
+                stemsGroup.style.opacity = '1';
+                vaseGroup.style.opacity = '0.5';
+
+                stemsGroup.classList.remove('hidden');
+                vaseGroup.classList.remove('hidden');
+
                 itemNameInput.setAttribute('list', 'cutFlowersList');
             } else if (isPlant) {
                 plantFlag.classList.add('active');
                 bouquetFlag.classList.remove('active');
-                typeSpecificFields.classList.remove('hidden');
-                vaseGroup.classList.remove('hidden');
-                stemsGroup.classList.add('hidden');
-                stemsCountInput.value = '';
+                
                 stemsCountInput.disabled = true;
+                stemsCountInput.required = false;
                 vaseTypeInput.disabled = false;
+                vaseTypeInput.required = true;
+
+                stemsGroup.style.opacity = '0.5';
+                vaseGroup.style.opacity = '1';
+
+                stemsGroup.classList.remove('hidden');
+                vaseGroup.classList.remove('hidden');
+                
                 itemNameInput.setAttribute('list', 'plantList');
             } else {
                 bouquetFlag.classList.remove('active');
                 plantFlag.classList.remove('active');
-                stemsGroup.classList.add('hidden');
-                vaseGroup.classList.add('hidden');
-                typeSpecificFields.classList.add('hidden');
-                stemsCountInput.value = '';
-                vaseTypeInput.value = '';
+                
                 stemsCountInput.disabled = false;
+                stemsCountInput.required = false;
                 vaseTypeInput.disabled = false;
+                vaseTypeInput.required = false;
+
+                stemsGroup.style.opacity = '1';
+                vaseGroup.style.opacity = '1';
+
+                stemsGroup.classList.remove('hidden');
+                vaseGroup.classList.remove('hidden');
+
                 itemNameInput.removeAttribute('list');
             }
         }
@@ -728,6 +753,7 @@
             
             // Inizializza lo scanner
             const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                scannerBeep.play(); // Riproduce il suono
                 eanCodeInput.value = decodedText;
                 scanArea.style.borderColor = '#10b981'; // Imposta il bordo a verde
                 setTimeout(() => {
@@ -929,7 +955,10 @@
         });
 
         // Carica i dati all'avvio dell'app
-        document.addEventListener('DOMContentLoaded', loadFromLocalStorage);
+        document.addEventListener('DOMContentLoaded', () => {
+          loadFromLocalStorage();
+          updateFlagState(); // Imposta lo stato iniziale dei campi
+        });
     </script>
 </body>
 </html>
