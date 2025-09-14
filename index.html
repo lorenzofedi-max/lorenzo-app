@@ -650,10 +650,8 @@
             });
         }
 
-        // Funzione per svuotare i campi del form
+        // Funzione per svuotare i campi del form mantenendo i campi della catena e del negozio
         function resetProductFields() {
-            storeChainInput.value = '';
-            storeNameInput.value = '';
             itemNameInput.value = '';
             stemsCountInput.value = '';
             vaseDiameterInput.value = '';
@@ -757,10 +755,20 @@
         
         // Listener per gli eventi
         saveBtn.addEventListener('click', () => {
+            // Validazione generale
             if (!storeChainInput.value || !storeNameInput.value || !itemNameInput.value || !priceValueInput.value || !currentType) {
+                validationError.textContent = "Si prega di compilare tutti i campi obbligatori.";
                 validationError.classList.remove('hidden');
                 return;
             }
+
+            // Validazione specifica per EAN o Fornitore
+            if (!eanCodeInput.value && !supplierNameInput.value) {
+                validationError.textContent = "Si prega di inserire un Codice a Barre (EAN) o un Fornitore.";
+                validationError.classList.remove('hidden');
+                return;
+            }
+
             validationError.classList.add('hidden');
 
             const newPrice = {
