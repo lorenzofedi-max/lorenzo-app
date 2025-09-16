@@ -741,7 +741,7 @@
         
         function startScanner() {
             qrReaderContainer.style.display = 'flex';
-            scannerStatus.textContent = "Mantieni il codice a circa 10-15 cm dalla fotocamera.";
+            scannerStatus.textContent = "Caricamento fotocamera...";
             html5QrCode = new Html5Qrcode("qr-reader");
             const config = { 
                 fps: 10, 
@@ -774,6 +774,8 @@
                 stopScanner();
                 showToast("Errore: Impossibile avviare la fotocamera. Controlla i permessi.");
             });
+        
+            closeScannerBtn.addEventListener('click', stopScanner);
         }
 
         function stopScanner() {
