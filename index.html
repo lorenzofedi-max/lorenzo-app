@@ -241,7 +241,7 @@
             width: 90vw;
             max-width: 400px;
             height: auto;
-            border: 2px solid; /* Aggiunto per il feedback visivo */
+            border: 4px solid #3b82f6; /* Bordo blu per guida visiva */
             border-radius: 1rem;
             overflow: hidden;
         }
@@ -259,6 +259,20 @@
             text-align: center;
             font-size: 1rem;
             margin-top: 1rem;
+        }
+        .restart-button {
+            background-color: #4b5563;
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background-color 0.2s;
+            display: block;
+        }
+        .restart-button:hover {
+            background-color: #6b7280;
         }
     </style>
 </head>
@@ -539,8 +553,11 @@
     <div id="qr-reader-container" class="hidden">
         <div class="flex flex-col items-center justify-center h-full">
             <div id="qr-reader" class="rounded-xl overflow-hidden"></div>
-            <div id="scanner-status" class="text-white text-center mt-4"></div>
-            <button id="close-scanner-btn" class="scanner-close-button mt-4">Chiudi</button>
+            <div id="scanner-status" class="text-white text-center mt-4">Mantieni il codice a circa 10-15 cm dalla fotocamera.</div>
+            <div class="flex gap-4 mt-4">
+                <button id="restart-scanner-btn" class="restart-button">Riavvia Scansione</button>
+                <button id="close-scanner-btn" class="scanner-close-button">Chiudi</button>
+            </div>
         </div>
     </div>
 
@@ -577,6 +594,7 @@
         const scannerStatus = document.getElementById('scanner-status');
         const qrReader = document.getElementById('qr-reader');
         const closeScannerBtn = document.getElementById('close-scanner-btn');
+        const restartScannerBtn = document.getElementById('restart-scanner-btn');
         const searchInput = document.getElementById('searchInput');
 
         const beepSound = new Audio('data:audio/wav;base64,UklGRl9QDwBXQVZFZm10IBAAAAABAAEARKwAAIhYAABBZGF0YTo8DwA');
@@ -678,6 +696,7 @@
                 itemNameInput.setAttribute('list', 'cutFlowersList');
             } else if (currentType === 'Pianta') {
                 stemsGroup.classList.add('hidden');
+                vaseGroup.classList.remove('hidden');
                 itemNameInput.setAttribute('list', 'plantList');
             } else {
                 stemsGroup.classList.remove('hidden');
@@ -722,7 +741,7 @@
         
         function startScanner() {
             qrReaderContainer.style.display = 'flex';
-            scannerStatus.textContent = "Caricamento fotocamera...";
+            scannerStatus.textContent = "Mantieni il codice a circa 10-15 cm dalla fotocamera.";
             html5QrCode = new Html5Qrcode("qr-reader");
             const config = { 
                 fps: 10, 
@@ -755,8 +774,6 @@
                 stopScanner();
                 showToast("Errore: Impossibile avviare la fotocamera. Controlla i permessi.");
             });
-        
-            closeScannerBtn.addEventListener('click', stopScanner);
         }
 
         function stopScanner() {
@@ -944,6 +961,12 @@
         cameraScanBtn.addEventListener('click', startScanner);
         closeScannerBtn.addEventListener('click', () => {
             stopScanner();
+        });
+        
+        // Nuovo gestore per il pulsante di riavvio
+        restartScannerBtn.addEventListener('click', () => {
+            stopScanner();
+            setTimeout(startScanner, 500); // Piccolo ritardo per il riavvio
         });
 
         searchInput.addEventListener('input', (e) => {
