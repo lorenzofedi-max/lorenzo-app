@@ -154,17 +154,20 @@
         .report-table tbody tr:last-child td {
             border-bottom: none;
         }
-        .delete-btn-cell {
+        .edit-btn-cell, .delete-btn-cell {
             text-align: center;
-            width: 50px; /* Larghezza fissa per il pulsante */
+            width: 50px;
         }
-        .delete-btn {
+        .icon-btn {
             background-color: transparent;
             border: none;
             cursor: pointer;
             padding: 0.5rem;
             border-radius: 50%;
             transition: background-color 0.2s;
+        }
+        .icon-btn:hover {
+            background-color: #e5e7eb;
         }
         .delete-btn:hover {
             background-color: #fca5a5;
@@ -241,7 +244,7 @@
             width: 90vw;
             max-width: 400px;
             height: auto;
-            border: 4px solid #3b82f6; /* Bordo blu per guida visiva */
+            border: 2px solid; /* Aggiunto per il feedback visivo */
             border-radius: 1rem;
             overflow: hidden;
         }
@@ -260,19 +263,23 @@
             font-size: 1rem;
             margin-top: 1rem;
         }
-        .restart-button {
-            background-color: #4b5563;
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            cursor: pointer;
-            margin-top: 1rem;
-            transition: background-color 0.2s;
-            display: block;
+        /* Stile minimale per inputs inline in modalità modifica */
+        .inline-input {
+            width: 100%;
+            padding: 0.5rem 0.6rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            font-size: 0.95rem;
         }
-        .restart-button:hover {
-            background-color: #6b7280;
+        .inline-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        .action-cell {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -295,63 +302,135 @@
                     <datalist id="storeChainsList">
                         <option value="Aldi"></option>
                         <option value="Alleanza 3.0"></option>
+                        <option value="Brico Io"></option>
+                        <option value="Brico OK"></option>
                         <option value="Bricocenter"></option>
                         <option value="Bricofer"></option>
-                        <option value="Brico Io"></option>
-                        <option value="Brico Ok"></option>
                         <option value="Carrefour"></option>
-                        <option value="Cfadda"></option>
+                        <option value="CFadda"></option>
                         <option value="Conad"></option>
                         <option value="Coop Etruria"></option>
-                        <option value="Coop FI"></option>
+                        <option value="Coop fi"></option>
                         <option value="Esselunga"></option>
                         <option value="Eurospin"></option>
                         <option value="IKEA"></option>
                         <option value="Leroy Merlin"></option>
                         <option value="Lidl"></option>
+                        <option value="OBI"></option>
                         <option value="Pam"></option>
+                        <option value="Penny"></option>
                         <option value="Tigros"></option>
+                        <option value="Viridea"></option>
                     </datalist>
-                    <!-- Plant list -->
+
+                    <!-- Plant list (ARTICOLO quando Pianta) -->
                     <datalist id="plantList">
-                        <option value="Agrumi"></option>
+                        <option value="Abete"></option>
+                        <option value="Aechmea"></option>
+                        <option value="Agrifoglio"></option>
+                        <option value="Agrume"></option>
+                        <option value="Alberi da frutto"></option>
+                        <option value="Alga palla"></option>
                         <option value="Anthurium"></option>
+                        <option value="Aptenia"></option>
+                        <option value="Arbusti da siepe"></option>
+                        <option value="Aromatiche"></option>
+                        <option value="Azalea"></option>
+                        <option value="Basilico"></option>
                         <option value="Begonia"></option>
-                        <option value="Bougainvillea"></option>
-                        <option value="Calathea"></option>
+                        <option value="Bromelia"></option>
+                        <option value="Bulbi"></option>
                         <option value="Cactus"></option>
+                        <option value="Calathea"></option>
+                        <option value="Calluna"></option>
+                        <option value="Calluna picasso"></option>
                         <option value="Camelia"></option>
+                        <option value="Campanula"></option>
+                        <option value="Cavolo ornamentale"></option>
+                        <option value="Celosia"></option>
                         <option value="Ciclamino"></option>
-                        <option value="Cipresso"></option>
+                        <option value="Cocus nocifera (cocco)"></option>
+                        <option value="Crisantemo"></option>
+                        <option value="Crisantemo settembrino"></option>
+                        <option value="Cupressus"></option>
+                        <option value="Cycas"></option>
+                        <option value="Dipladenia"></option>
+                        <option value="Dracaena"></option>
                         <option value="Edera"></option>
-                        <option value="Ficus"></option>
+                        <option value="Erba gatto"></option>
+                        <option value="Erica"></option>
+                        <option value="Euonymus"></option>
+                        <option value="Euphorbia milii"></option>
+                        <option value="Felce"></option>
+                        <option value="Ficus amstel"></option>
+                        <option value="Ficus benjamin"></option>
+                        <option value="Ficus ginseng"></option>
+                        <option value="Ficus lyrata"></option>
+                        <option value="Ficus robusta"></option>
+                        <option value="Fragola"></option>
+                        <option value="Gardenia"></option>
+                        <option value="Garofano"></option>
                         <option value="Gelsomino"></option>
                         <option value="Geranio"></option>
+                        <option value="Gerbera"></option>
+                        <option value="Guzmania"></option>
+                        <option value="Hebe"></option>
+                        <option value="Helleborus"></option>
+                        <option value="Kalanchoe"></option>
+                        <option value="Kentia"></option>
                         <option value="Lavanda"></option>
                         <option value="Limone"></option>
-                        <option value="Magnolia"></option>
-                        <option value="Mandevilla"></option>
+                        <option value="Mesembriantemo"></option>
+                        <option value="Microclima"></option>
                         <option value="Monstera"></option>
+                        <option value="Musa (banano)"></option>
+                        <option value="Ornitogallo"></option>
                         <option value="Ortensia"></option>
-                        <option value="Palma"></option>
+                        <option value="Pachira"></option>
+                        <option value="Peonia"></option>
+                        <option value="Petunia"></option>
+                        <option value="Phalaenopsis 1 ramo"></option>
+                        <option value="Phalaenopsis 2 rami"></option>
+                        <option value="Phalaenopsis 2 rami ceramica"></option>
+                        <option value="Phalaenopsis 3 rami"></option>
+                        <option value="Phalaenopsis blu/colorato"></option>
+                        <option value="Photos basket"></option>
+                        <option value="Photos palo"></option>
                         <option value="Pino"></option>
+                        <option value="Portulaca"></option>
                         <option value="Pothos"></option>
-                        <option value="Rose"></option>
+                        <option value="Primula"></option>
+                        <option value="Primula obconica"></option>
+                        <option value="Princettia"></option>
+                        <option value="Rosa"></option>
+                        <option value="Rose stabilizzate"></option>
+                        <option value="Rosellina"></option>
+                        <option value="Sansevieria"></option>
+                        <option value="Solanum"></option>
+                        <option value="Spathiphyllum"></option>
                         <option value="Stella di Natale"></option>
-                        <option value="Succulente"></option>
+                        <option value="Strelitzia"></option>
+                        <option value="Succulenta"></option>
+                        <option value="Surfinia"></option>
+                        <option value="Tradescantia"></option>
                         <option value="Ulivo"></option>
+                        <option value="Vriesea"></option>
+                        <option value="Yucca"></option>
                         <option value="Zamioculcas"></option>
                     </datalist>
-                    <!-- Vase diameter list -->
+
+                    <!-- Vase diameter list (con decimali con virgola) -->
                     <datalist id="vaseDiameterList">
                         <option value="3"></option>
                         <option value="4"></option>
                         <option value="5"></option>
-                        <option value="6"></option>
+                        <option value="5,5"></option>
+                        <option value="6,5"></option>
                         <option value="7"></option>
                         <option value="8"></option>
                         <option value="9"></option>
                         <option value="10"></option>
+                        <option value="10,5"></option>
                         <option value="11"></option>
                         <option value="12"></option>
                         <option value="13"></option>
@@ -373,24 +452,31 @@
                         <option value="29"></option>
                         <option value="30"></option>
                     </datalist>
-                    <!-- Cut flowers list -->
+
+                    <!-- Cut flowers list (ARTICOLO quando Mazzo) -->
                     <datalist id="cutFlowersList">
                         <option value="Alstroemerie"></option>
                         <option value="Amarilli"></option>
                         <option value="Anemoni"></option>
                         <option value="Anthurium"></option>
+                        <option value="Bq. misto grande"></option>
+                        <option value="Bq. misto medio"></option>
+                        <option value="Bq. misto piccolo"></option>
                         <option value="Calle"></option>
                         <option value="Crisantemi"></option>
-                        <option value="Fiori recisi"></option>
+                        <option value="Eucalipto"></option>
                         <option value="Fresie"></option>
                         <option value="Garofani"></option>
                         <option value="Gerbere"></option>
-                        <option value="Girasoli"></option>
+                        <option value="Gerbere spider"></option>
                         <option value="Gipsophila"></option>
+                        <option value="Girasoli"></option>
                         <option value="Gladioli"></option>
+                        <option value="Ilex"></option>
                         <option value="Iris"></option>
                         <option value="Lilium"></option>
                         <option value="Lisianthus"></option>
+                        <option value="Lucky Bamboo"></option>
                         <option value="Orchidee Cymbidium"></option>
                         <option value="Orchidee Dendrobium"></option>
                         <option value="Peonie"></option>
@@ -402,6 +488,7 @@
                         <option value="Strelitzie"></option>
                         <option value="Tulipani"></option>
                     </datalist>
+
                     <!-- Stems count list -->
                     <datalist id="stemsList">
                         <option value="1"></option>
@@ -416,9 +503,35 @@
                         <option value="25"></option>
                     </datalist>
                 </div>
+
                 <div class="form-group flex-1">
                     <label for="storeName" class="block text-gray-700 font-medium mb-1">Negozio</label>
-                    <input type="text" id="storeName" class="price-input font-bold" placeholder="Digitare nome/luogo del punto vendita" required>
+                    <input type="text" id="storeName" list="storeNamesList" class="price-input font-bold" placeholder="Digitare nome/luogo del punto vendita" required>
+                    <!-- Store names list -->
+                    <datalist id="storeNamesList">
+                        <option value="Altopascio"></option>
+                        <option value="Arancio"></option>
+                        <option value="Campi Bisenzio"></option>
+                        <option value="Cascina"></option>
+                        <option value="Empoli"></option>
+                        <option value="Firenze"></option>
+                        <option value="Follonica"></option>
+                        <option value="Grosseto"></option>
+                        <option value="Livorno"></option>
+                        <option value="Lucca"></option>
+                        <option value="Monsummano"></option>
+                        <option value="Montecatini"></option>
+                        <option value="Pescia"></option>
+                        <option value="Piombino"></option>
+                        <option value="Pisa"></option>
+                        <option value="Pistoia"></option>
+                        <option value="Pontedera"></option>
+                        <option value="Porcari"></option>
+                        <option value="San Concordio"></option>
+                        <option value="Scandicci"></option>
+                        <option value="Sesto Fiorentino"></option>
+                        <option value="Viareggio"></option>
+                    </datalist>
                 </div>
             </div>
             
@@ -466,12 +579,24 @@
                     <label for="supplierName" class="block text-gray-700 font-medium mb-1">Fornitore</label>
                     <input list="supplierList" id="supplierName" class="price-input" placeholder="Seleziona o digita un fornitore">
                     <datalist id="supplierList">
-                        <option value="Eurofresh"></option>
-                        <option value="Pagano"></option>
                         <option value="Baldi"></option>
+                        <option value="Bregliano"></option>
+                        <option value="Eurofresh"></option>
+                        <option value="Fitimex"></option>
+                        <option value="Flora Toscana"></option>
+                        <option value="Floragro"></option>
+                        <option value="Giromagi"></option>
+                        <option value="Global Plant"></option>
+                        <option value="Losiflores"></option>
+                        <option value="Maffucci"></option>
+                        <option value="Medici"></option>
+                        <option value="Morotti"></option>
+                        <option value="Osioflor"></option>
+                        <option value="Pagano"></option>
+                        <option value="Pastor"></option>
                         <option value="PD Plants"></option>
                         <option value="Procoflora"></option>
-                        <option value="Global Plant"></option>
+                        <option value="Sangiorgio"></option>
                     </datalist>
                 </div>
                 <div class="form-group flex-1">
@@ -527,6 +652,7 @@
                             <th>Fornitore</th>
                             <th>Codice a Barre (EAN)</th>
                             <th>Note</th>
+                            <th class="edit-btn-cell"></th>
                             <th class="delete-btn-cell"></th>
                         </tr>
                     </thead>
@@ -553,11 +679,8 @@
     <div id="qr-reader-container" class="hidden">
         <div class="flex flex-col items-center justify-center h-full">
             <div id="qr-reader" class="rounded-xl overflow-hidden"></div>
-            <div id="scanner-status" class="text-white text-center mt-4">Mantieni il codice a circa 10-15 cm dalla fotocamera.</div>
-            <div class="flex gap-4 mt-4">
-                <button id="restart-scanner-btn" class="restart-button">Riavvia Scansione</button>
-                <button id="close-scanner-btn" class="scanner-close-button">Chiudi</button>
-            </div>
+            <div id="scanner-status" class="text-white text-center mt-4"></div>
+            <button id="close-scanner-btn" class="scanner-close-button mt-4">Chiudi</button>
         </div>
     </div>
 
@@ -594,13 +717,14 @@
         const scannerStatus = document.getElementById('scanner-status');
         const qrReader = document.getElementById('qr-reader');
         const closeScannerBtn = document.getElementById('close-scanner-btn');
-        const restartScannerBtn = document.getElementById('restart-scanner-btn');
         const searchInput = document.getElementById('searchInput');
 
         const beepSound = new Audio('data:audio/wav;base64,UklGRl9QDwBXQVZFZm10IBAAAAABAAEARKwAAIhYAABBZGF0YTo8DwA');
         let currentType = null;
         let html5QrCode;
         let dialogAction; // Per differenziare le azioni del dialogo
+        let currentEditIndex = null;
+        let originalEditSnapshot = null;
 
         function saveData() {
             localStorage.setItem(localStorageKey, JSON.stringify(prices));
@@ -653,11 +777,12 @@
         function renderTable(filteredPrices = prices) {
             priceReportTable.innerHTML = '';
             if (filteredPrices.length === 0) {
-                priceReportTable.innerHTML = `<tr><td colspan="12" class="text-center text-gray-500 py-4">Nessun dato registrato.</td></tr>`;
+                priceReportTable.innerHTML = `<tr><td colspan="13" class="text-center text-gray-500 py-4">Nessun dato registrato.</td></tr>`;
                 return;
             }
             filteredPrices.forEach((price, index) => {
                 const row = document.createElement('tr');
+                row.dataset.index = index;
                 row.innerHTML = `
                     <td>${formatDate(price.timestamp)}</td>
                     <td>${price.storeChain}</td>
@@ -670,6 +795,11 @@
                     <td>${price.supplierName || '-'}</td>
                     <td>${price.eanCode || '-'}</td>
                     <td>${price.notes || '-'}</td>
+                    <td class="edit-btn-cell action-cell">
+                        <button class="icon-btn edit-btn" title="Modifica" data-index="${index}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                        </button>
+                    </td>
                     <td class="delete-btn-cell">
                         <button class="delete-btn" data-index="${index}">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
@@ -679,7 +809,7 @@
                 priceReportTable.appendChild(row);
             });
         }
-        
+
         function resetProductAndPriceFields() {
             itemNameInput.value = '';
             stemsCountInput.value = '';
@@ -696,7 +826,6 @@
                 itemNameInput.setAttribute('list', 'cutFlowersList');
             } else if (currentType === 'Pianta') {
                 stemsGroup.classList.add('hidden');
-                vaseGroup.classList.remove('hidden');
                 itemNameInput.setAttribute('list', 'plantList');
             } else {
                 stemsGroup.classList.remove('hidden');
@@ -828,8 +957,13 @@
         });
         
         priceReportTable.addEventListener('click', (e) => {
-            if (e.target.closest('.delete-btn')) {
-                const index = e.target.closest('.delete-btn').dataset.index;
+            const deleteBtnEl = e.target.closest('.delete-btn');
+            const editBtnEl = e.target.closest('.edit-btn');
+            const saveBtnEl = e.target.closest('.row-save-btn');
+            const cancelBtnEl = e.target.closest('.row-cancel-btn');
+
+            if (deleteBtnEl) {
+                const index = deleteBtnEl.dataset.index;
                 document.getElementById('dialogMessage').textContent = 'Sei sicuro di voler eliminare questo elemento?';
                 confirmBtn.textContent = 'Elimina';
                 confirmBtn.classList.add('bg-red-500', 'hover:bg-red-600');
@@ -843,8 +977,124 @@
                     confirmationDialog.classList.remove('show');
                     showToast('Elemento eliminato!');
                 };
+                return;
+            }
+
+            if (editBtnEl) {
+                const index = Number(editBtnEl.dataset.index);
+                enterEditMode(index);
+                return;
+            }
+
+            if (saveBtnEl) {
+                const index = Number(saveBtnEl.dataset.index);
+                saveRowEdits(index);
+                return;
+            }
+
+            if (cancelBtnEl) {
+                cancelEditMode();
+                return;
             }
         });
+
+        function enterEditMode(index) {
+            if (currentEditIndex !== null) return; // già in modifica
+            currentEditIndex = index;
+            originalEditSnapshot = JSON.parse(JSON.stringify(prices[index]));
+
+            const row = priceReportTable.querySelector(`tr[data-index="${index}"]`);
+            if (!row) return;
+
+            const record = prices[index];
+
+            // Costruisci input inline (manteniamo Data non modificabile)
+            row.innerHTML = `
+                <td>${formatDate(record.timestamp)}</td>
+                <td><input class="inline-input" type="text" value="${escapeHtml(record.storeChain || '')}"></td>
+                <td><input class="inline-input" type="text" value="${escapeHtml(record.storeName || '')}"></td>
+                <td><input class="inline-input" type="text" value="${escapeHtml(record.type || '')}" placeholder="Mazzo / Pianta"></td>
+                <td><input class="inline-input" type="text" value="${escapeHtml(record.itemName || '')}"></td>
+                <td><input class="inline-input" type="number" step="1" value="${record.stemsCount != null ? record.stemsCount : ''}" placeholder="-"></td>
+                <td><input class="inline-input" type="number" step="0.1" value="${record.vaseDiameter != null ? record.vaseDiameter : ''}" placeholder="-"></td>
+                <td><input class="inline-input" type="number" step="0.01" value="${record.priceValue != null ? record.priceValue : ''}"></td>
+                <td><input class="inline-input" type="text" value="${escapeHtml(record.supplierName || '')}" placeholder="-"></td>
+                <td><input class="inline-input" type="text" value="${escapeHtml(record.eanCode || '')}" placeholder="-"></td>
+                <td><input class="inline-input" type="text" value="${escapeHtml(record.notes || '')}" placeholder="-"></td>
+                <td class="edit-btn-cell action-cell">
+                    <button class="icon-btn row-save-btn" title="Salva" data-index="${index}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>
+                    </button>
+                </td>
+                <td class="delete-btn-cell action-cell">
+                    <button class="icon-btn row-cancel-btn" title="Annulla">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </td>
+            `;
+        }
+
+        function cancelEditMode() {
+            if (currentEditIndex === null) return;
+            // Ripristina la riga originale
+            renderTable();
+            currentEditIndex = null;
+            originalEditSnapshot = null;
+        }
+
+        function saveRowEdits(index) {
+            const row = priceReportTable.querySelector(`tr[data-index="${index}"]`);
+            if (!row) return;
+
+            const inputs = row.querySelectorAll('input.inline-input');
+            // Mappa: 0 storeChain, 1 storeName, 2 type, 3 itemName, 4 stemsCount, 5 vaseDiameter, 6 priceValue, 7 supplierName, 8 eanCode, 9 notes
+            const updated = {
+                ...prices[index],
+                storeChain: inputs[0].value.trim(),
+                storeName: inputs[1].value.trim(),
+                type: inputs[2].value.trim(),
+                itemName: inputs[3].value.trim(),
+                stemsCount: inputs[4].value === '' ? null : Number(inputs[4].value),
+                vaseDiameter: inputs[5].value === '' ? null : Number(inputs[5].value),
+                priceValue: inputs[6].value === '' ? null : Number(inputs[6].value),
+                supplierName: inputs[7].value.trim(),
+                eanCode: inputs[8].value.trim(),
+                notes: inputs[9].value.trim()
+            };
+
+            // Validazioni minime come nel salvataggio
+            if (!updated.storeChain || !updated.storeName || !updated.itemName || updated.priceValue === null || !updated.type) {
+                showToast('Compila i campi obbligatori.');
+                return;
+            }
+            if (!updated.eanCode && !updated.supplierName) {
+                showToast('Inserisci EAN o Fornitore.');
+                return;
+            }
+
+            // Normalizza in base al tipo (coerente con inserimento)
+            if (updated.type === 'Mazzo') {
+                updated.vaseDiameter = null;
+            } else if (updated.type === 'Pianta') {
+                updated.stemsCount = null;
+            }
+
+            prices[index] = updated;
+            saveData();
+            renderTable();
+            currentEditIndex = null;
+            originalEditSnapshot = null;
+            showToast('Modifica effettuata!');
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#039;');
+        }
         
         exportExcelBtn.addEventListener('click', async () => {
             if (prices.length === 0) {
@@ -963,12 +1213,6 @@
         cameraScanBtn.addEventListener('click', startScanner);
         closeScannerBtn.addEventListener('click', () => {
             stopScanner();
-        });
-        
-        // Nuovo gestore per il pulsante di riavvio
-        restartScannerBtn.addEventListener('click', () => {
-            stopScanner();
-            setTimeout(startScanner, 500); // Piccolo ritardo per il riavvio
         });
 
         searchInput.addEventListener('input', (e) => {
