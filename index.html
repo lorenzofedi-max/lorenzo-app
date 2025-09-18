@@ -1,1234 +1,717 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rilevamento Prezzi</title>
-    <!-- PWA meta tags and links -->
-    <link rel="apple-touch-icon" sizes="120x120" href="logo_120x120.png">
-    <link rel="apple-touch-icon" sizes="152x152" href="logo_152x152.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="logo_180x180.png">
-    <link rel="apple-touch-icon" href="logo_180x180.png">
-    <link rel="manifest" href="manifest.json">
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./service-worker.js').then(registration => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          }, err => {
-            console.log('ServiceWorker registration failed: ', err);
-          });
-        });
-      }
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #ffffff;
-        }
-        .container {
-            max-width: 95%;
-            margin: auto;
-            padding: 1.5rem;
-        }
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        .price-input {
-            width: 100%;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            border: 1px solid #d1d5db;
-            outline: none;
-            transition: border-color 0.2s;
-            font-size: 1rem;
-        }
-        .price-input:focus {
-            border-color: #3b82f6;
-        }
-        .price-input.border-red-500 {
-            border-color: #ef4444;
-        }
-        .dialog {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-        .dialog.show {
-            display: flex;
-        }
-        .dialog-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            text-align: center;
-            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
-            max-width: 80%;
-            transform: scale(0.8);
-            transition: transform 0.2s ease-in-out;
-        }
-        .dialog.show .dialog-content {
-            transform: scale(1);
-        }
-        .button {
-            padding: 0.75rem 1.5rem;
-            font-weight: 600;
-            border-radius: 0.75rem;
-            transition: background-color 0.2s, transform 0.2s;
-        }
-        .button:active {
-            transform: scale(0.95);
-        }
-        .flag-option {
-            cursor: pointer;
-            padding: 0.75rem;
-            border-radius: 0.75rem;
-            background-color: transparent;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3.5rem;
-        }
-        .flag-option.active {
-            transform: scale(1.1);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-        .icon-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 3rem;
-        }
-        @media (max-width: 640px) {
-            .icon-container {
-                gap: 2rem;
-            }
-        }
-        /* Nuovi stili per la vera tabella */
-        .report-table-container {
-            width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 1rem;
-        }
-        .report-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            background-color: #fff;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .report-table th, .report-table td {
-            padding: 1rem;
-            text-align: left;
-            white-space: nowrap;
-        }
-        .report-table th {
-            background-color: #f3f4f6;
-            font-weight: 600;
-            color: #4b5563;
-        }
-        .report-table tbody tr {
-            transition: background-color 0.2s ease-in-out;
-        }
-        .report-table tbody tr:hover {
-            background-color: #f9fafb;
-        }
-        .report-table tbody tr td {
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .report-table tbody tr:last-child td {
-            border-bottom: none;
-        }
-        .edit-btn-cell, .delete-btn-cell {
-            text-align: center;
-            width: 50px;
-        }
-        .icon-btn {
-            background-color: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 50%;
-            transition: background-color 0.2s;
-        }
-        .icon-btn:hover {
-            background-color: #e5e7eb;
-        }
-        .delete-btn:hover {
-            background-color: #fca5a5;
-        }
-        .delete-btn svg {
-            color: #ef4444;
-            transition: color 0.2s;
-        }
-        .price-cell {
-            font-weight: 600;
-            color: #16a34a; /* verde scuro */
-        }
-        .error-message {
-            color: #ef4444;
-            font-size: 0.875rem;
-            margin-top: -1rem;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        #toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #10b981;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            font-weight: 600;
-            z-index: 2000;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-            pointer-events: none;
-        }
-        #toast.show {
-            opacity: 1;
-        }
-        .app-logo {
-            display: block;
-            margin: 0 auto 2rem;
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-        }
-        .ean-input-container {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-        .camera-button {
-            position: absolute;
-            right: 0.5rem;
-            background-color: #3b82f6;
-            color: white;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-        }
-        #qr-reader-container {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #111827;
-            z-index: 999;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        #qr-reader {
-            width: 90vw;
-            max-width: 400px;
-            height: auto;
-            border: 2px solid; /* Aggiunto per il feedback visivo */
-            border-radius: 1rem;
-            overflow: hidden;
-        }
-        .scanner-close-button {
-            margin-top: 1rem;
-            background-color: #ef4444;
-            color: white;
-            font-weight: 600;
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.75rem;
-            cursor: pointer;
-        }
-        #scanner-status {
-            color: #d1d5db;
-            text-align: center;
-            font-size: 1rem;
-            margin-top: 1rem;
-        }
-        /* Stile minimale per inputs inline in modalità modifica */
-        .inline-input {
-            width: 100%;
-            padding: 0.5rem 0.6rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            font-size: 0.95rem;
-        }
-        .inline-input:focus {
-            outline: none;
-            border-color: #3b82f6;
-        }
-        .action-cell {
-            display: flex;
-            gap: 0.25rem;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rilevamento Prezzi</title>
+
+  <!-- PWA -->
+  <link rel="apple-touch-icon" sizes="120x120" href="logo_120x120.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="logo_152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="logo_180x180.png">
+  <link rel="apple-touch-icon" href="logo_180x180.png">
+  <link rel="manifest" href="manifest.json">
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').then(
+          reg => console.log('SW OK:', reg.scope),
+          err => console.log('SW KO:', err)
+        );
+      });
+    }
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background:#fff; }
+    .container { max-width:95%; margin:auto; padding:1.5rem; }
+    .form-group { margin-bottom:1.5rem; }
+    .price-input { width:100%; padding:.75rem; border-radius:.5rem; border:1px solid #d1d5db; outline:none; transition:border-color .2s; font-size:1rem; }
+    .price-input:focus { border-color:#3b82f6; }
+    .error-message { color:#ef4444; font-size:.875rem; margin-top:-1rem; margin-bottom:1rem; text-align:center; }
+
+    .dialog { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); justify-content:center; align-items:center; z-index:1000; }
+    .dialog.show { display:flex; }
+    .dialog-content { background:#fff; padding:2rem; border-radius:1rem; text-align:center; box-shadow:0 10px 15px rgba(0,0,0,.2); max-width:80%; transform:scale(.8); transition:transform .2s; }
+    .dialog.show .dialog-content { transform:scale(1); }
+    .button { padding:.75rem 1.5rem; font-weight:600; border-radius:.75rem; transition:background-color .2s, transform .2s; }
+    .button:active { transform:scale(.95); }
+
+    .flag-option { cursor:pointer; padding:.75rem; border-radius:.75rem; transition:transform .2s, box-shadow .2s; display:flex; align-items:center; justify-content:center; font-size:3.5rem; }
+    .flag-option.active { transform:scale(1.1); box-shadow:0 4px 12px rgba(0,0,0,.2); }
+    .icon-container { display:flex; justify-content:center; align-items:center; gap:3rem; }
+    @media (max-width:640px){ .icon-container{ gap:2rem; } }
+
+    .report-table-container { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:1rem; }
+    .report-table { width:100%; border-collapse:separate; border-spacing:0; background:#fff; border-radius:.75rem; overflow:hidden; box-shadow:0 4px 6px rgba(0,0,0,.1); }
+    .report-table th, .report-table td { padding:1rem; text-align:left; white-space:nowrap; }
+    .report-table th { background:#f3f4f6; font-weight:600; color:#4b5563; }
+    .report-table tbody tr:hover { background:#f9fafb; }
+    .edit-btn-cell, .delete-btn-cell { text-align:center; width:50px; }
+    .icon-btn { background:transparent; border:none; cursor:pointer; padding:.5rem; border-radius:50%; transition:background-color .2s; }
+    .icon-btn:hover { background:#e5e7eb; }
+    .delete-btn:hover { background:#fca5a5; }
+    .delete-btn svg { color:#ef4444; }
+    .price-cell { font-weight:600; color:#16a34a; }
+
+    #toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:#10b981; color:#fff; padding:.75rem 1.5rem; border-radius:.75rem; box-shadow:0 4px 12px rgba(0,0,0,.2); font-weight:600; z-index:2000; opacity:0; transition:opacity .3s; pointer-events:none; }
+    #toast.show { opacity:1; }
+
+    .app-logo { display:block; margin:0 auto 2rem; width:100px; height:100px; border-radius:50%; }
+
+    .ean-input-container { position:relative; display:flex; align-items:center; }
+    .camera-button, .search-button { position:absolute; top:50%; transform:translateY(-50%); background:#3b82f6; color:#fff; padding:.5rem; border-radius:.5rem; cursor:pointer; }
+    .camera-button { right:.5rem; }
+    .search-button { right:3.2rem; background:#6b7280; }
+
+    /* Scanner e Lookup overlay */
+    #qr-reader-container, #supplier-lookup-container {
+      display:none; position:fixed; inset:0;
+      background:#111827; z-index:1200;
+      align-items:center; justify-content:center;
+      padding:1rem;
+    }
+    #qr-reader { width:90vw; max-width:400px; border:2px solid; border-radius:1rem; overflow:hidden; }
+    .scanner-close-button { margin-top:1rem; background:#ef4444; color:#fff; font-weight:600; padding:.75rem 1.5rem; border-radius:.75rem; cursor:pointer; }
+    #scanner-status { color:#d1d5db; text-align:center; font-size:1rem; margin-top:1rem; }
+
+    /* Inline edit */
+    .inline-input { width:100%; padding:.5rem .6rem; border:1px solid #d1d5db; border-radius:.5rem; font-size:.95rem; }
+    .inline-input:focus { outline:none; border-color:#3b82f6; }
+    .action-cell { display:flex; gap:.25rem; align-items:center; justify-content:center; }
+
+    /* Lookup card (scorrevole) */
+    .lookup-card {
+      width:92vw; max-width:860px; background:#fff;
+      border-radius:1rem; box-shadow:0 10px 20px rgba(0,0,0,.25);
+      padding:1rem 1rem 1.25rem; max-height:92vh; overflow:hidden;
+    }
+    .lookup-header {
+      display:flex; align-items:center; gap:.75rem; margin-bottom:.75rem;
+      flex-wrap:wrap;
+    }
+    .lookup-title { font-size:1.25rem; font-weight:700; color:#111827; }
+    .lookup-search { flex:1; min-width:220px; }
+    .lookup-close { background:#ef4444; color:#fff; padding:.5rem .9rem; border-radius:.5rem; font-weight:600; }
+    .lookup-table-wrap {
+      width:100%; overflow-x:auto; overflow-y:auto;
+      max-height:60vh; border:1px solid #e5e7eb; border-radius:.5rem;
+    }
+    .lookup-table th, .lookup-table td { padding:.75rem; }
+    .lookup-select-btn { background:#3b82f6; color:#fff; padding:.35rem .7rem; border-radius:.5rem; font-weight:600; }
+    .lookup-empty { text-align:center; padding:1rem; color:#6b7280; }
+  </style>
 </head>
 <body class="bg-white min-h-screen flex flex-col items-center">
-    <!-- Main App Container -->
-    <div class="container mt-8 p-6 bg-white rounded-xl shadow-lg w-full md:max-w-3xl">
-        <!-- Logo -->
-        <img src="./logo_192x192.png" 
-             alt="Logo dell'app" 
-             class="app-logo"
-        />
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Rilevamento Prezzi</h1>
+  <div class="container mt-8 p-6 bg-white rounded-xl shadow-lg w-full md:max-w-3xl">
+    <img src="./logo_192x192.png" alt="Logo dell'app" class="app-logo"/>
+    <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Rilevamento Prezzi</h1>
 
-        <div class="mb-6 space-y-6">
-            <!-- Store Chain and Store Name -->
-            <div class="flex flex-col sm:flex-row gap-6">
-                <div class="form-group flex-1">
-                    <label for="storeChain" class="block text-gray-700 font-medium mb-1">Catena</label>
-                    <input list="storeChainsList" id="storeChain" class="price-input font-bold" placeholder="Seleziona o digita una catena" required>
-                    <datalist id="storeChainsList">
-                        <option value="Aldi"></option>
-                        <option value="Alleanza 3.0"></option>
-                        <option value="Brico Io"></option>
-                        <option value="Brico OK"></option>
-                        <option value="Bricocenter"></option>
-                        <option value="Bricofer"></option>
-                        <option value="Carrefour"></option>
-                        <option value="CFadda"></option>
-                        <option value="Conad"></option>
-                        <option value="Coop Etruria"></option>
-                        <option value="Coop fi"></option>
-                        <option value="Esselunga"></option>
-                        <option value="Eurospin"></option>
-                        <option value="IKEA"></option>
-                        <option value="Leroy Merlin"></option>
-                        <option value="Lidl"></option>
-                        <option value="OBI"></option>
-                        <option value="Pam"></option>
-                        <option value="Penny"></option>
-                        <option value="Tigros"></option>
-                        <option value="Viridea"></option>
-                    </datalist>
+    <div class="mb-6 space-y-6">
+      <!-- Catena / Negozio -->
+      <div class="flex flex-col sm:flex-row gap-6">
+        <div class="form-group flex-1">
+          <label for="storeChain" class="block text-gray-700 font-medium mb-1">Catena</label>
+          <input list="storeChainsList" id="storeChain" class="price-input font-bold" placeholder="Seleziona o digita una catena" required>
+          <datalist id="storeChainsList">
+            <option value="Aldi"></option>
+            <option value="Alleanza 3.0"></option>
+            <option value="Brico Io"></option>
+            <option value="Brico OK"></option>
+            <option value="Bricocenter"></option>
+            <option value="Bricofer"></option>
+            <option value="Carrefour"></option>
+            <option value="CFadda"></option>
+            <option value="Conad"></option>
+            <option value="Coop Etruria"></option>
+            <option value="Coop fi"></option>
+            <option value="Esselunga"></option>
+            <option value="Eurospin"></option>
+            <option value="IKEA"></option>
+            <option value="Leroy Merlin"></option>
+            <option value="Lidl"></option>
+            <option value="OBI"></option>
+            <option value="Pam"></option>
+            <option value="Penny"></option>
+            <option value="Tigros"></option>
+            <option value="Viridea"></option>
+          </datalist>
 
-                    <!-- Plant list (ARTICOLO quando Pianta) -->
-                    <datalist id="plantList">
-                        <option value="Abete"></option>
-                        <option value="Aechmea"></option>
-                        <option value="Agrifoglio"></option>
-                        <option value="Agrume"></option>
-                        <option value="Alberi da frutto"></option>
-                        <option value="Alga palla"></option>
-                        <option value="Anthurium"></option>
-                        <option value="Aptenia"></option>
-                        <option value="Arbusti da siepe"></option>
-                        <option value="Aromatiche"></option>
-                        <option value="Azalea"></option>
-                        <option value="Basilico"></option>
-                        <option value="Begonia"></option>
-                        <option value="Bromelia"></option>
-                        <option value="Bulbi"></option>
-                        <option value="Cactus"></option>
-                        <option value="Calathea"></option>
-                        <option value="Calluna"></option>
-                        <option value="Calluna picasso"></option>
-                        <option value="Camelia"></option>
-                        <option value="Campanula"></option>
-                        <option value="Cavolo ornamentale"></option>
-                        <option value="Celosia"></option>
-                        <option value="Ciclamino"></option>
-                        <option value="Cocus nocifera (cocco)"></option>
-                        <option value="Crisantemo"></option>
-                        <option value="Crisantemo settembrino"></option>
-                        <option value="Cupressus"></option>
-                        <option value="Cycas"></option>
-                        <option value="Dipladenia"></option>
-                        <option value="Dracaena"></option>
-                        <option value="Edera"></option>
-                        <option value="Erba gatto"></option>
-                        <option value="Erica"></option>
-                        <option value="Euonymus"></option>
-                        <option value="Euphorbia milii"></option>
-                        <option value="Felce"></option>
-                        <option value="Ficus amstel"></option>
-                        <option value="Ficus benjamin"></option>
-                        <option value="Ficus ginseng"></option>
-                        <option value="Ficus lyrata"></option>
-                        <option value="Ficus robusta"></option>
-                        <option value="Fragola"></option>
-                        <option value="Gardenia"></option>
-                        <option value="Garofano"></option>
-                        <option value="Gelsomino"></option>
-                        <option value="Geranio"></option>
-                        <option value="Gerbera"></option>
-                        <option value="Guzmania"></option>
-                        <option value="Hebe"></option>
-                        <option value="Helleborus"></option>
-                        <option value="Kalanchoe"></option>
-                        <option value="Kentia"></option>
-                        <option value="Lavanda"></option>
-                        <option value="Limone"></option>
-                        <option value="Mesembriantemo"></option>
-                        <option value="Microclima"></option>
-                        <option value="Monstera"></option>
-                        <option value="Musa (banano)"></option>
-                        <option value="Ornitogallo"></option>
-                        <option value="Ortensia"></option>
-                        <option value="Pachira"></option>
-                        <option value="Peonia"></option>
-                        <option value="Petunia"></option>
-                        <option value="Phalaenopsis 1 ramo"></option>
-                        <option value="Phalaenopsis 2 rami"></option>
-                        <option value="Phalaenopsis 2 rami ceramica"></option>
-                        <option value="Phalaenopsis 3 rami"></option>
-                        <option value="Phalaenopsis blu/colorato"></option>
-                        <option value="Photos basket"></option>
-                        <option value="Photos palo"></option>
-                        <option value="Pino"></option>
-                        <option value="Portulaca"></option>
-                        <option value="Pothos"></option>
-                        <option value="Primula"></option>
-                        <option value="Primula obconica"></option>
-                        <option value="Princettia"></option>
-                        <option value="Rosa"></option>
-                        <option value="Rose stabilizzate"></option>
-                        <option value="Rosellina"></option>
-                        <option value="Sansevieria"></option>
-                        <option value="Solanum"></option>
-                        <option value="Spathiphyllum"></option>
-                        <option value="Stella di Natale"></option>
-                        <option value="Strelitzia"></option>
-                        <option value="Succulenta"></option>
-                        <option value="Surfinia"></option>
-                        <option value="Tradescantia"></option>
-                        <option value="Ulivo"></option>
-                        <option value="Vriesea"></option>
-                        <option value="Yucca"></option>
-                        <option value="Zamioculcas"></option>
-                    </datalist>
+          <!-- Pianta -->
+          <datalist id="plantList">
+            <option value="Abete"></option><option value="Aechmea"></option><option value="Agrifoglio"></option><option value="Agrume"></option><option value="Alberi da frutto"></option><option value="Alga palla"></option><option value="Anthurium"></option><option value="Aptenia"></option><option value="Arbusti da siepe"></option><option value="Aromatiche"></option><option value="Azalea"></option><option value="Basilico"></option><option value="Begonia"></option><option value="Bromelia"></option><option value="Bulbi"></option><option value="Cactus"></option><option value="Calathea"></option><option value="Calluna"></option><option value="Calluna picasso"></option><option value="Camelia"></option><option value="Campanula"></option><option value="Cavolo ornamentale"></option><option value="Celosia"></option><option value="Ciclamino"></option><option value="Cocus nocifera (cocco)"></option><option value="Crisantemo"></option><option value="Crisantemo settembrino"></option><option value="Cupressus"></option><option value="Cycas"></option><option value="Dipladenia"></option><option value="Dracaena"></option><option value="Edera"></option><option value="Erba gatto"></option><option value="Erica"></option><option value="Euonymus"></option><option value="Euphorbia milii"></option><option value="Felce"></option><option value="Ficus amstel"></option><option value="Ficus benjamin"></option><option value="Ficus ginseng"></option><option value="Ficus lyrata"></option><option value="Ficus robusta"></option><option value="Fragola"></option><option value="Gardenia"></option><option value="Garofano"></option><option value="Gelsomino"></option><option value="Geranio"></option><option value="Gerbera"></option><option value="Guzmania"></option><option value="Hebe"></option><option value="Helleborus"></option><option value="Kalanchoe"></option><option value="Kentia"></option><option value="Lavanda"></option><option value="Limone"></option><option value="Mesembriantemo"></option><option value="Microclima"></option><option value="Monstera"></option><option value="Musa (banano)"></option><option value="Ornitogallo"></option><option value="Ortensia"></option><option value="Pachira"></option><option value="Peonia"></option><option value="Petunia"></option><option value="Phalaenopsis 1 ramo"></option><option value="Phalaenopsis 2 rami"></option><option value="Phalaenopsis 2 rami ceramica"></option><option value="Phalaenopsis 3 rami"></option><option value="Phalaenopsis blu/colorato"></option><option value="Photos basket"></option><option value="Photos palo"></option><option value="Pino"></option><option value="Portulaca"></option><option value="Pothos"></option><option value="Primula"></option><option value="Primula obconica"></option><option value="Princettia"></option><option value="Rosa"></option><option value="Rose stabilizzate"></option><option value="Rosellina"></option><option value="Sansevieria"></option><option value="Solanum"></option><option value="Spathiphyllum"></option><option value="Stella di Natale"></option><option value="Strelitzia"></option><option value="Succulenta"></option><option value="Surfinia"></option><option value="Tradescantia"></option><option value="Ulivo"></option><option value="Vriesea"></option><option value="Yucca"></option><option value="Zamioculcas"></option>
+          </datalist>
 
-                    <!-- Vase diameter list (con decimali con virgola) -->
-                    <datalist id="vaseDiameterList">
-                        <option value="3"></option>
-                        <option value="4"></option>
-                        <option value="5"></option>
-                        <option value="5,5"></option>
-                        <option value="6,5"></option>
-                        <option value="7"></option>
-                        <option value="8"></option>
-                        <option value="9"></option>
-                        <option value="10"></option>
-                        <option value="10,5"></option>
-                        <option value="11"></option>
-                        <option value="12"></option>
-                        <option value="13"></option>
-                        <option value="14"></option>
-                        <option value="15"></option>
-                        <option value="16"></option>
-                        <option value="17"></option>
-                        <option value="18"></option>
-                        <option value="19"></option>
-                        <option value="20"></option>
-                        <option value="21"></option>
-                        <option value="22"></option>
-                        <option value="23"></option>
-                        <option value="24"></option>
-                        <option value="25"></option>
-                        <option value="26"></option>
-                        <option value="27"></option>
-                        <option value="28"></option>
-                        <option value="29"></option>
-                        <option value="30"></option>
-                    </datalist>
+          <!-- Vasi -->
+          <datalist id="vaseDiameterList">
+            <option value="3"></option><option value="4"></option><option value="5"></option><option value="5,5"></option><option value="6,5"></option><option value="7"></option><option value="8"></option><option value="9"></option><option value="10"></option><option value="10,5"></option><option value="11"></option><option value="12"></option><option value="13"></option><option value="14"></option><option value="15"></option><option value="16"></option><option value="17"></option><option value="18"></option><option value="19"></option><option value="20"></option><option value="21"></option><option value="22"></option><option value="23"></option><option value="24"></option><option value="25"></option><option value="26"></option><option value="27"></option><option value="28"></option><option value="29"></option><option value="30"></option>
+          </datalist>
 
-                    <!-- Cut flowers list (ARTICOLO quando Mazzo) -->
-                    <datalist id="cutFlowersList">
-                        <option value="Alstroemerie"></option>
-                        <option value="Amarilli"></option>
-                        <option value="Anemoni"></option>
-                        <option value="Anthurium"></option>
-                        <option value="Bq. misto grande"></option>
-                        <option value="Bq. misto medio"></option>
-                        <option value="Bq. misto piccolo"></option>
-                        <option value="Calle"></option>
-                        <option value="Crisantemi"></option>
-                        <option value="Eucalipto"></option>
-                        <option value="Fresie"></option>
-                        <option value="Garofani"></option>
-                        <option value="Gerbere"></option>
-                        <option value="Gerbere spider"></option>
-                        <option value="Gipsophila"></option>
-                        <option value="Girasoli"></option>
-                        <option value="Gladioli"></option>
-                        <option value="Ilex"></option>
-                        <option value="Iris"></option>
-                        <option value="Lilium"></option>
-                        <option value="Lisianthus"></option>
-                        <option value="Lucky Bamboo"></option>
-                        <option value="Orchidee Cymbidium"></option>
-                        <option value="Orchidee Dendrobium"></option>
-                        <option value="Peonie"></option>
-                        <option value="Ranuncoli"></option>
-                        <option value="Rose"></option>
-                        <option value="Rose solidal"></option>
-                        <option value="Ruscus"></option>
-                        <option value="Solidago"></option>
-                        <option value="Strelitzie"></option>
-                        <option value="Tulipani"></option>
-                    </datalist>
+          <!-- Fiori recisi -->
+          <datalist id="cutFlowersList">
+            <option value="Alstroemerie"></option><option value="Amarilli"></option><option value="Anemoni"></option><option value="Anthurium"></option><option value="Bq. misto grande"></option><option value="Bq. misto medio"></option><option value="Bq. misto piccolo"></option><option value="Calle"></option><option value="Crisantemi"></option><option value="Eucalipto"></option><option value="Fresie"></option><option value="Garofani"></option><option value="Gerbere"></option><option value="Gerbere spider"></option><option value="Gipsophila"></option><option value="Girasoli"></option><option value="Gladioli"></option><option value="Ilex"></option><option value="Iris"></option><option value="Lilium"></option><option value="Lisianthus"></option><option value="Lucky Bamboo"></option><option value="Orchidee Cymbidium"></option><option value="Orchidee Dendrobium"></option><option value="Peonie"></option><option value="Ranuncoli"></option><option value="Rose"></option><option value="Rose solidal"></option><option value="Ruscus"></option><option value="Solidago"></option><option value="Strelitzie"></option><option value="Tulipani"></option>
+          </datalist>
 
-                    <!-- Stems count list -->
-                    <datalist id="stemsList">
-                        <option value="1"></option>
-                        <option value="3"></option>
-                        <option value="5"></option>
-                        <option value="7"></option>
-                        <option value="9"></option>
-                        <option value="10"></option>
-                        <option value="12"></option>
-                        <option value="15"></option>
-                        <option value="20"></option>
-                        <option value="25"></option>
-                    </datalist>
-                </div>
-
-                <div class="form-group flex-1">
-                    <label for="storeName" class="block text-gray-700 font-medium mb-1">Negozio</label>
-                    <input type="text" id="storeName" list="storeNamesList" class="price-input font-bold" placeholder="Digitare nome/luogo del punto vendita" required>
-                    <!-- Store names list -->
-                    <datalist id="storeNamesList">
-                        <option value="Altopascio"></option>
-                        <option value="Arancio"></option>
-                        <option value="Campi Bisenzio"></option>
-                        <option value="Cascina"></option>
-                        <option value="Empoli"></option>
-                        <option value="Firenze"></option>
-                        <option value="Follonica"></option>
-                        <option value="Grosseto"></option>
-                        <option value="Livorno"></option>
-                        <option value="Lucca"></option>
-                        <option value="Monsummano"></option>
-                        <option value="Montecatini"></option>
-                        <option value="Pescia"></option>
-                        <option value="Piombino"></option>
-                        <option value="Pisa"></option>
-                        <option value="Pistoia"></option>
-                        <option value="Pontedera"></option>
-                        <option value="Porcari"></option>
-                        <option value="San Concordio"></option>
-                        <option value="Scandicci"></option>
-                        <option value="Sesto Fiorentino"></option>
-                        <option value="Viareggio"></option>
-                    </datalist>
-                </div>
-            </div>
-            
-            <hr class="border-t border-gray-300 my-4">
-
-            <!-- Mazzo e Pianta -->
-            <div class="icon-container mb-4">
-                <div class="flex flex-col items-center gap-2">
-                    <div id="bouquetFlag" class="flag-option">💐</div>
-                    <p class="text-sm font-medium text-gray-700">Mazzo</p>
-                </div>
-                <div class="flex flex-col items-center gap-2">
-                    <div id="plantFlag" class="flag-option">🪴</div>
-                    <p class="text-sm font-medium text-gray-700">Pianta</p>
-                </div>
-            </div>
-
-            <!-- Item name -->
-            <div class="flex flex-col sm:flex-row gap-6">
-                <div class="form-group flex-1">
-                    <label for="itemName" class="block text-gray-700 font-medium mb-1">Articolo</label>
-                    <input type="text" id="itemName" class="price-input" placeholder="Seleziona o digita un articolo" required>
-                </div>
-            </div>
-            
-            <!-- Conditional fields for Stems and Vase -->
-            <div id="typeSpecificFields" class="flex flex-col sm:flex-row gap-6">
-                <div id="stemsGroup" class="form-group flex-1">
-                    <label for="stemsCount" class="block text-gray-700 font-medium mb-1">N° Steli</label>
-                    <input type="number" list="stemsList" id="stemsCount" class="price-input" placeholder="Seleziona o digita il numero" required>
-                </div>
-                <div id="vaseGroup" class="form-group flex-1">
-                    <label for="vaseDiameter" class="block text-gray-700 font-medium mb-1">Vaso</label>
-                    <input list="vaseDiameterList" id="vaseDiameter" class="price-input" placeholder="Seleziona o digita il diametro" required>
-                </div>
-            </div>
-
-            <!-- Price, Supplier and EAN Code -->
-            <div class="flex flex-col sm:flex-row gap-6">
-                 <div class="form-group flex-1">
-                    <label for="priceValue" class="block text-gray-700 font-medium mb-1">Prezzo</label>
-                    <input type="number" step="0.01" id="priceValue" class="price-input" placeholder="Digitare il prezzo" required>
-                </div>
-                <div class="form-group flex-1">
-                    <label for="supplierName" class="block text-gray-700 font-medium mb-1">Fornitore</label>
-                    <input list="supplierList" id="supplierName" class="price-input" placeholder="Seleziona o digita un fornitore">
-                    <datalist id="supplierList">
-                        <option value="Baldi"></option>
-                        <option value="Bregliano"></option>
-                        <option value="Eurofresh"></option>
-                        <option value="Fitimex"></option>
-                        <option value="Flora Toscana"></option>
-                        <option value="Floragro"></option>
-                        <option value="Giromagi"></option>
-                        <option value="Global Plant"></option>
-                        <option value="Losiflores"></option>
-                        <option value="Maffucci"></option>
-                        <option value="Medici"></option>
-                        <option value="Morotti"></option>
-                        <option value="Osioflor"></option>
-                        <option value="Pagano"></option>
-                        <option value="Pastor"></option>
-                        <option value="PD Plants"></option>
-                        <option value="Procoflora"></option>
-                        <option value="Sangiorgio"></option>
-                    </datalist>
-                </div>
-                <div class="form-group flex-1">
-                    <label for="eanCode" class="block text-gray-700 font-medium mb-1">Codice a Barre (EAN)</label>
-                    <div class="ean-input-container">
-                        <input type="text" id="eanCode" class="price-input pr-12" placeholder="Inserisci il codice EAN">
-                        <button id="cameraScanBtn" class="camera-button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5L14.5 4z"/><circle cx="12" cy="13" r="3"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-           
-            
-            <!-- Notes -->
-            <div class="form-group">
-                <label for="notes" class="block text-gray-700 font-medium mb-1">Note</label>
-                <textarea id="notes" class="price-input h-24 resize-none" placeholder="Aggiungere note, se necessario"></textarea>
-            </div>
-            <p id="validationError" class="error-message hidden">Si prega di compilare tutti i campi obbligatori.</p>
+          <!-- Steli -->
+          <datalist id="stemsList">
+            <option value="1"></option><option value="3"></option><option value="5"></option><option value="7"></option><option value="9"></option><option value="10"></option><option value="12"></option><option value="15"></option><option value="20"></option><option value="25"></option>
+          </datalist>
         </div>
-        
-        <!-- Save Button -->
-        <div class="mb-6 flex justify-center">
-            <button id="saveBtn" class="bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex-1 max-w-sm">
-                Registra
+
+        <div class="form-group flex-1">
+          <label for="storeName" class="block text-gray-700 font-medium mb-1">Negozio</label>
+          <input type="text" id="storeName" list="storeNamesList" class="price-input font-bold" placeholder="Digitare nome/luogo del punto vendita" required>
+          <datalist id="storeNamesList">
+            <option value="Altopascio"></option><option value="Arancio"></option><option value="Campi Bisenzio"></option><option value="Cascina"></option><option value="Empoli"></option><option value="Firenze"></option><option value="Follonica"></option><option value="Grosseto"></option><option value="Livorno"></option><option value="Lucca"></option><option value="Monsummano"></option><option value="Montecatini"></option><option value="Pescia"></option><option value="Piombino"></option><option value="Pisa"></option><option value="Pistoia"></option><option value="Pontedera"></option><option value="Porcari"></option><option value="San Concordio"></option><option value="Scandicci"></option><option value="Sesto Fiorentino"></option><option value="Viareggio"></option>
+          </datalist>
+        </div>
+      </div>
+
+      <hr class="border-t border-gray-300 my-4"/>
+
+      <!-- Mazzo / Pianta -->
+      <div class="icon-container mb-4">
+        <div class="flex flex-col items-center gap-2">
+          <div id="bouquetFlag" class="flag-option">💐</div>
+          <p class="text-sm font-medium text-gray-700">Mazzo</p>
+        </div>
+        <div class="flex flex-col items-center gap-2">
+          <div id="plantFlag" class="flag-option">🪴</div>
+          <p class="text-sm font-medium text-gray-700">Pianta</p>
+        </div>
+      </div>
+
+      <!-- Articolo -->
+      <div class="flex flex-col sm:flex-row gap-6">
+        <div class="form-group flex-1">
+          <label for="itemName" class="block text-gray-700 font-medium mb-1">Articolo</label>
+          <input type="text" id="itemName" class="price-input" placeholder="Seleziona o digita un articolo" required>
+        </div>
+      </div>
+
+      <!-- Campi condizionali -->
+      <div id="typeSpecificFields" class="flex flex-col sm:flex-row gap-6">
+        <div id="stemsGroup" class="form-group flex-1">
+          <label for="stemsCount" class="block text-gray-700 font-medium mb-1">N° Steli</label>
+          <input type="number" list="stemsList" id="stemsCount" class="price-input" placeholder="Seleziona o digita il numero" required>
+        </div>
+        <div id="vaseGroup" class="form-group flex-1">
+          <label for="vaseDiameter" class="block text-gray-700 font-medium mb-1">Vaso</label>
+          <input list="vaseDiameterList" id="vaseDiameter" class="price-input" placeholder="Seleziona o digita il diametro" required>
+        </div>
+      </div>
+
+      <!-- Prezzo / Fornitore / EAN -->
+      <div class="flex flex-col sm:flex-row gap-6">
+        <div class="form-group flex-1">
+          <label for="priceValue" class="block text-gray-700 font-medium mb-1">Prezzo</label>
+          <input type="number" step="0.01" id="priceValue" class="price-input" placeholder="Digitare il prezzo" required>
+        </div>
+        <div class="form-group flex-1">
+          <label for="supplierName" class="block text-gray-700 font-medium mb-1">Fornitore</label>
+          <input list="supplierList" id="supplierName" class="price-input" placeholder="Seleziona o digita un fornitore">
+          <datalist id="supplierList">
+            <option value="Baldi"></option><option value="Bregliano"></option><option value="Eurofresh"></option><option value="Fitimex"></option><option value="Flora Toscana"></option><option value="Floragro"></option><option value="Giromagi"></option><option value="Global Plant"></option><option value="Losiflores"></option><option value="Maffucci"></option><option value="Medici"></option><option value="Morotti"></option><option value="Osioflor"></option><option value="Pagano"></option><option value="Pastor"></option><option value="PD Plants"></option><option value="Procoflora"></option><option value="Sangiorgio"></option>
+          </datalist>
+        </div>
+        <div class="form-group flex-1">
+          <label for="eanCode" class="block text-gray-700 font-medium mb-1">Codice a Barre (EAN)</label>
+          <div class="ean-input-container">
+            <input type="text" id="eanCode" class="price-input pr-24" placeholder="Inserisci il codice EAN">
+            <button id="supplierLookupBtn" class="search-button" title="Cerca fornitore per radice EAN">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             </button>
+            <button id="cameraScanBtn" class="camera-button" title="Scanner EAN">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-camera"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.5L14.5 4z"/><circle cx="12" cy="13" r="3"/></svg>
+            </button>
+          </div>
         </div>
+      </div>
 
-        <hr class="border-t border-gray-300 my-8">
-
-        <div class="mt-8">
-            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4 sm:gap-0">
-                <h2 class="text-2xl font-semibold text-gray-700">Anteprima Dati</h2>
-                <input type="text" id="searchInput" class="price-input sm:w-1/3" placeholder="Cerca tra i dati...">
-                <button id="exportExcelBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors">
-                    Esporta in Excel
-                </button>
-            </div>
-            <!-- Preview Table -->
-            <div class="report-table-container">
-                <table id="priceReportTable" class="report-table">
-                    <thead>
-                        <tr>
-                            <th>Data</th>
-                            <th>Catena</th>
-                            <th>Negozio</th>
-                            <th>Tipologia</th>
-                            <th>Articolo</th>
-                            <th>N° Steli</th>
-                            <th>Vaso</th>
-                            <th>Prezzo</th>
-                            <th>Fornitore</th>
-                            <th>Codice a Barre (EAN)</th>
-                            <th>Note</th>
-                            <th class="edit-btn-cell"></th>
-                            <th class="delete-btn-cell"></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <!-- Rows will be inserted here by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+      <!-- Note -->
+      <div class="form-group">
+        <label for="notes" class="block text-gray-700 font-medium mb-1">Note</label>
+        <textarea id="notes" class="price-input h-24 resize-none" placeholder="Aggiungere note, se necessario"></textarea>
+      </div>
+      <p id="validationError" class="error-message hidden">Si prega di compilare tutti i campi obbligatori.</p>
     </div>
 
-    <!-- Confirmation Dialog -->
-    <div id="confirmationDialog" class="dialog">
-        <div class="dialog-content">
-            <p id="dialogMessage" class="text-xl mb-4 font-medium">Sei sicuro di voler eliminare questo elemento?</p>
-            <div class="flex justify-center gap-4">
-                <button id="confirmBtn" class="button bg-red-500 text-white hover:bg-red-600">Elimina</button>
-                <button id="cancelBtn" class="button bg-gray-300 text-gray-800 hover:bg-gray-400">Annulla</button>
-            </div>
-        </div>
+    <!-- Registra -->
+    <div class="mb-6 flex justify-center">
+      <button id="saveBtn" class="bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors flex-1 max-w-sm">Registra</button>
     </div>
 
-    <!-- Scanner EAN -->
-    <div id="qr-reader-container" class="hidden">
-        <div class="flex flex-col items-center justify-center h-full">
-            <div id="qr-reader" class="rounded-xl overflow-hidden"></div>
-            <div id="scanner-status" class="text-white text-center mt-4"></div>
-            <button id="close-scanner-btn" class="scanner-close-button mt-4">Chiudi</button>
-        </div>
+    <hr class="border-t border-gray-300 my-8"/>
+
+    <!-- Anteprima -->
+    <div class="mt-8">
+      <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4 sm:gap-0">
+        <h2 class="text-2xl font-semibold text-gray-700">Anteprima Dati</h2>
+        <input type="text" id="searchInput" class="price-input sm:w-1/3" placeholder="Cerca tra i dati...">
+        <button id="exportExcelBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors">Esporta in Excel</button>
+      </div>
+      <div class="report-table-container">
+        <table id="priceReportTable" class="report-table">
+          <thead>
+            <tr>
+              <th>Data</th><th>Catena</th><th>Negozio</th><th>Tipologia</th><th>Articolo</th><th>N° Steli</th><th>Vaso</th><th>Prezzo</th><th>Fornitore</th><th>Codice a Barre (EAN)</th><th>Note</th><th class="edit-btn-cell"></th><th class="delete-btn-cell"></th>
+            </tr>
+          </thead>
+          <tbody><!-- rows by JS --></tbody>
+        </table>
+      </div>
     </div>
+  </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" role="alert">Salvataggio riuscito!</div>
+  <!-- Dialog conferma -->
+  <div id="confirmationDialog" class="dialog">
+    <div class="dialog-content">
+      <p id="dialogMessage" class="text-xl mb-4 font-medium">Sei sicuro di voler eliminare questo elemento?</p>
+      <div class="flex justify-center gap-4">
+        <button id="confirmBtn" class="button bg-red-500 text-white hover:bg-red-600">Elimina</button>
+        <button id="cancelBtn" class="button bg-gray-300 text-gray-800 hover:bg-gray-400">Annulla</button>
+      </div>
+    </div>
+  </div>
 
-    <script>
-        let prices = [];
-        const localStorageKey = 'rilevamentoPrezziData';
-        const lastSelectedTypeKey = 'lastSelectedType';
+  <!-- Scanner EAN -->
+  <div id="qr-reader-container" style="display:none;">
+    <div class="flex flex-col items-center justify-center h-full">
+      <div id="qr-reader" class="rounded-xl overflow-hidden"></div>
+      <div id="scanner-status" class="text-white text-center mt-4"></div>
+      <button id="close-scanner-btn" class="scanner-close-button mt-4">Chiudi</button>
+    </div>
+  </div>
 
-        const saveBtn = document.getElementById('saveBtn');
-        const exportExcelBtn = document.getElementById('exportExcelBtn');
-        const cameraScanBtn = document.getElementById('cameraScanBtn');
-        const storeChainInput = document.getElementById('storeChain');
-        const storeNameInput = document.getElementById('storeName');
-        const itemNameInput = document.getElementById('itemName');
-        const stemsCountInput = document.getElementById('stemsCount');
-        const vaseDiameterInput = document.getElementById('vaseDiameter');
-        const priceValueInput = document.getElementById('priceValue');
-        const supplierNameInput = document.getElementById('supplierName');
-        const eanCodeInput = document.getElementById('eanCode');
-        const notesInput = document.getElementById('notes');
-        const priceReportTable = document.getElementById('priceReportTable').querySelector('tbody');
-        const confirmationDialog = document.getElementById('confirmationDialog');
-        const confirmBtn = document.getElementById('confirmBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const validationError = document.getElementById('validationError');
-        const bouquetFlag = document.getElementById('bouquetFlag');
-        const plantFlag = document.getElementById('plantFlag');
-        const stemsGroup = document.getElementById('stemsGroup');
-        const vaseGroup = document.getElementById('vaseGroup');
-        const qrReaderContainer = document.getElementById('qr-reader-container');
-        const scannerStatus = document.getElementById('scanner-status');
-        const qrReader = document.getElementById('qr-reader');
-        const closeScannerBtn = document.getElementById('close-scanner-btn');
-        const searchInput = document.getElementById('searchInput');
+  <!-- Lookup Fornitore -->
+  <div id="supplier-lookup-container" style="display:none;">
+    <div class="lookup-card">
+      <div class="lookup-header">
+        <div class="lookup-title">Ricerca Fornitore per Radice EAN</div>
+        <div class="lookup-search"><input id="lookupSearchInput" class="price-input" placeholder="Cerca per radice o fornitore..."></div>
+        <button id="lookupCloseBtn" class="lookup-close">Chiudi</button>
+      </div>
+      <div class="lookup-table-wrap">
+        <table class="report-table lookup-table">
+          <thead><tr><th>Radice EAN</th><th>Fornitore</th><th style="width:120px;"></th></tr></thead>
+          <tbody id="lookupTableBody"></tbody>
+        </table>
+      </div>
+      <div id="lookupEmpty" class="lookup-empty hidden">Nessun risultato.</div>
+    </div>
+  </div>
 
-        const beepSound = new Audio('data:audio/wav;base64,UklGRl9QDwBXQVZFZm10IBAAAAABAAEARKwAAIhYAABBZGF0YTo8DwA');
-        let currentType = null;
-        let html5QrCode;
-        let dialogAction; // Per differenziare le azioni del dialogo
-        let currentEditIndex = null;
-        let originalEditSnapshot = null;
+  <!-- Toast -->
+  <div id="toast" role="alert">Salvataggio riuscito!</div>
 
-        function saveData() {
-            localStorage.setItem(localStorageKey, JSON.stringify(prices));
-        }
-        
-        function saveLastSelectedType(type) {
-            localStorage.setItem(lastSelectedTypeKey, type);
-        }
+  <script>
+    let prices = [];
+    const localStorageKey = 'rilevamentoPrezziData';
+    const lastSelectedTypeKey = 'lastSelectedType';
 
-        function loadData() {
-            const data = localStorage.getItem(localStorageKey);
-            if (data) {
-                prices = JSON.parse(data);
-                renderTable();
-            }
-        }
+    // UI refs
+    const saveBtn = document.getElementById('saveBtn');
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
+    const cameraScanBtn = document.getElementById('cameraScanBtn');
+    const supplierLookupBtn = document.getElementById('supplierLookupBtn');
 
-        function loadLastSelectedType() {
-            const lastType = localStorage.getItem(lastSelectedTypeKey);
-            if (lastType) {
-                setProductType(lastType);
-            } else {
-                setProductType(null);
-            }
-        }
+    const storeChainInput = document.getElementById('storeChain');
+    const storeNameInput = document.getElementById('storeName');
+    const itemNameInput = document.getElementById('itemName');
+    const stemsCountInput = document.getElementById('stemsCount');
+    const vaseDiameterInput = document.getElementById('vaseDiameter');
+    const priceValueInput = document.getElementById('priceValue');
+    const supplierNameInput = document.getElementById('supplierName');
+    const eanCodeInput = document.getElementById('eanCode');
+    const notesInput = document.getElementById('notes');
 
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-        
-        function formatDate(date) {
-            let d = new Date(date);
-            if (isNaN(d.getTime())) {
-                // If it's a string from local storage, try to parse it
-                const parts = date.split('/');
-                if (parts.length === 3) {
-                    d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-                } else {
-                    return date; // Return original string if format is unexpected
-                }
-            }
-            return d.toLocaleDateString('it-IT');
-        }
-        
-        function renderTable(filteredPrices = prices) {
-            priceReportTable.innerHTML = '';
-            if (filteredPrices.length === 0) {
-                priceReportTable.innerHTML = `<tr><td colspan="13" class="text-center text-gray-500 py-4">Nessun dato registrato.</td></tr>`;
-                return;
-            }
-            filteredPrices.forEach((price, index) => {
-                const row = document.createElement('tr');
-                row.dataset.index = index;
-                row.innerHTML = `
-                    <td>${formatDate(price.timestamp)}</td>
-                    <td>${price.storeChain}</td>
-                    <td>${price.storeName}</td>
-                    <td>${price.type || '-'}</td>
-                    <td>${price.itemName}</td>
-                    <td>${price.stemsCount || '-'}</td>
-                    <td>${price.vaseDiameter || '-'}</td>
-                    <td class="price-cell">€ ${parseFloat(price.priceValue).toFixed(2)}</td>
-                    <td>${price.supplierName || '-'}</td>
-                    <td>${price.eanCode || '-'}</td>
-                    <td>${price.notes || '-'}</td>
-                    <td class="edit-btn-cell action-cell">
-                        <button class="icon-btn edit-btn" title="Modifica" data-index="${index}">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        </button>
-                    </td>
-                    <td class="delete-btn-cell">
-                        <button class="delete-btn" data-index="${index}">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-                        </button>
-                    </td>
-                `;
-                priceReportTable.appendChild(row);
-            });
-        }
+    const priceReportTable = document.getElementById('priceReportTable').querySelector('tbody');
+    const confirmationDialog = document.getElementById('confirmationDialog');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const validationError = document.getElementById('validationError');
 
-        function resetProductAndPriceFields() {
-            itemNameInput.value = '';
-            stemsCountInput.value = '';
-            vaseDiameterInput.value = '';
-            priceValueInput.value = '';
-            supplierNameInput.value = '';
-            eanCodeInput.value = '';
-            notesInput.value = '';
-            stemsGroup.classList.remove('hidden');
-            vaseGroup.classList.remove('hidden');
-            itemNameInput.removeAttribute('list');
-            if (currentType === 'Mazzo') {
-                vaseGroup.classList.add('hidden');
-                itemNameInput.setAttribute('list', 'cutFlowersList');
-            } else if (currentType === 'Pianta') {
-                stemsGroup.classList.add('hidden');
-                itemNameInput.setAttribute('list', 'plantList');
-            } else {
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.remove('hidden');
-                itemNameInput.removeAttribute('list');
-            }
-        }
-        
-        function resetAllFields() {
-            storeChainInput.value = '';
-            storeNameInput.value = '';
-            resetProductAndPriceFields();
-            currentType = null;
-            saveLastSelectedType(null);
-            bouquetFlag.classList.remove('active');
-            plantFlag.classList.remove('active');
-        }
+    const bouquetFlag = document.getElementById('bouquetFlag');
+    const plantFlag = document.getElementById('plantFlag');
+    const stemsGroup = document.getElementById('stemsGroup');
+    const vaseGroup = document.getElementById('vaseGroup');
 
-        function setProductType(type) {
-            currentType = type;
-            saveLastSelectedType(type);
-            if (type === 'Mazzo') {
-                bouquetFlag.classList.add('active');
-                plantFlag.classList.remove('active');
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.add('hidden');
-                itemNameInput.setAttribute('list', 'cutFlowersList');
-            } else if (type === 'Pianta') {
-                bouquetFlag.classList.remove('active');
-                plantFlag.classList.add('active');
-                stemsGroup.classList.add('hidden');
-                vaseGroup.classList.remove('hidden');
-                itemNameInput.setAttribute('list', 'plantList');
-            } else {
-                bouquetFlag.classList.remove('active');
-                plantFlag.classList.remove('active');
-                stemsGroup.classList.remove('hidden');
-                vaseGroup.classList.remove('hidden');
-                itemNameInput.removeAttribute('list');
-            }
-        }
-        
-        function startScanner() {
-            qrReaderContainer.style.display = 'flex';
-            scannerStatus.textContent = "Caricamento fotocamera...";
-            html5QrCode = new Html5Qrcode("qr-reader");
-            const config = { 
-                fps: 10, 
-                qrbox: { width: 300, height: 150 },
-                supportedScanTypes: [
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.EAN_8,
-                    Html5QrcodeSupportedFormats.CODE_39,
-                    Html5QrcodeSupportedFormats.UPC_A,
-                    Html5QrcodeSupportedFormats.UPC_E,
-                    Html5QrcodeSupportedFormats.QR_CODE
-                ]
-            };
-        
-            html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                (decodedText, decodedResult) => {
-                    beepSound.play();
-                    eanCodeInput.value = decodedText;
-                    stopScanner();
-                    showToast('EAN acquisito!');
-                },
-                (errorMessage) => {
-                    // console.log(errorMessage);
-                }
-            ).catch((err) => {
-                console.error("Errore all'avvio della fotocamera:", err);
-                stopScanner();
-                showToast("Errore: Impossibile avviare la fotocamera. Controlla i permessi.");
-            });
-        
-            closeScannerBtn.addEventListener('click', stopScanner);
-        }
+    const qrReaderContainer = document.getElementById('qr-reader-container');
+    const scannerStatus = document.getElementById('scanner-status');
+    const closeScannerBtn = document.getElementById('close-scanner-btn');
 
-        function stopScanner() {
-            if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => {
-                    qrReaderContainer.style.display = 'none';
-                    scannerStatus.textContent = "";
-                }).catch(err => {
-                    console.error("Errore nello stop della fotocamera:", err);
-                    qrReaderContainer.style.display = 'none';
-                    scannerStatus.textContent = "";
-                });
-            } else {
-                qrReaderContainer.style.display = 'none';
-                scannerStatus.textContent = "";
-            }
-        }
-        
-        saveBtn.addEventListener('click', () => {
-            if (!storeChainInput.value || !storeNameInput.value || !itemNameInput.value || !priceValueInput.value || !currentType) {
-                validationError.textContent = "Si prega di compilare tutti i campi obbligatori.";
-                validationError.classList.remove('hidden');
-                return;
-            }
-            if (!eanCodeInput.value && !supplierNameInput.value) {
-                validationError.textContent = "Si prega di inserire un Codice a Barre (EAN) o un Fornitore.";
-                validationError.classList.remove('hidden');
-                return;
-            }
-            validationError.classList.add('hidden');
-            const newPrice = {
-                id: Date.now(),
-                timestamp: new Date(),
-                storeChain: storeChainInput.value,
-                storeName: storeNameInput.value,
-                type: currentType,
-                itemName: itemNameInput.value,
-                stemsCount: currentType === 'Mazzo' ? stemsCountInput.value : null,
-                vaseDiameter: currentType === 'Pianta' ? vaseDiameterInput.value : null,
-                priceValue: priceValueInput.value,
-                supplierName: supplierNameInput.value,
-                eanCode: eanCodeInput.value,
-                notes: notesInput.value
-            };
-            prices.push(newPrice);
-            saveData();
-            renderTable();
-            resetProductAndPriceFields();
-            showToast('Dati registrati!');
+    const supplierLookupContainer = document.getElementById('supplier-lookup-container');
+    const lookupSearchInput = document.getElementById('lookupSearchInput');
+    const lookupTableBody = document.getElementById('lookupTableBody');
+    const lookupCloseBtn = document.getElementById('lookupCloseBtn');
+    const lookupEmpty = document.getElementById('lookupEmpty');
+
+    const searchInput = document.getElementById('searchInput');
+
+    const beepSound = new Audio('data:audio/wav;base64,UklGRl9QDwBXQVZFZm10IBAAAAABAAEARKwAAIhYAABBZGF0YTo8DwA');
+    let currentType = null;
+    let html5QrCode;
+    let dialogAction;
+    let currentEditIndex = null;
+
+    const SUPPLIER_FROM_EAN_ROOTS = [
+      { root: '8003568', supplier: 'Fitimex' },
+      { root: '8008638', supplier: 'Eurofresh' },
+      { root: '8010896', supplier: 'Baldi' },
+      { root: '8013129', supplier: 'Bregliano' },
+      { root: '8013451', supplier: 'Pastor Luigi' },
+      { root: '8019134', supplier: 'Losiflores' },
+      { root: '8021790', supplier: 'Sangiorgio' },
+      { root: '8023654', supplier: 'Osioflor' },
+      { root: '8024278', supplier: 'Morotti' },
+      { root: '8025761', supplier: 'Flora Toscana' },
+      { root: '8027204', supplier: 'Maffucci' },
+      { root: '8719548', supplier: 'Procoflora' },
+      { root: '803261051', supplier: 'Floragro' },
+      { root: '805004331', supplier: 'Maffucci' },
+      { root: '805127778', supplier: 'PD Plants' },
+      { root: '805534828', supplier: 'Pagano' },
+      { root: '805772306', supplier: 'Medici' },
+      { root: '805804573', supplier: 'PD Plants' },
+      { root: '805809362', supplier: 'Pagano' },
+      { root: '871912803', supplier: 'Procoflora' }
+    ];
+
+    /* Utils */
+    function saveData(){ localStorage.setItem(localStorageKey, JSON.stringify(prices)); }
+    function saveLastSelectedType(t){ localStorage.setItem(lastSelectedTypeKey, t); }
+    function loadData(){ const d = localStorage.getItem(localStorageKey); if(d){ prices = JSON.parse(d); renderTable(); } }
+    function loadLastSelectedType(){ const t = localStorage.getItem(lastSelectedTypeKey); setProductType(t || null); }
+    function showToast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200); }
+    function formatDate(date){
+      let d = new Date(date);
+      if(isNaN(d.getTime())){
+        const p = String(date).split('/');
+        if(p.length===3) d = new Date(`${p[2]}-${p[1]}-${p[0]}`); else return date;
+      }
+      return d.toLocaleDateString('it-IT');
+    }
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+
+    function renderTable(arr = prices){
+      priceReportTable.innerHTML = '';
+      if(arr.length===0){
+        priceReportTable.innerHTML = `<tr><td colspan="13" class="text-center text-gray-500 py-4">Nessun dato registrato.</td></tr>`;
+        return;
+      }
+      arr.forEach((p, i)=>{
+        const tr = document.createElement('tr'); tr.dataset.index=i;
+        tr.innerHTML = `
+          <td>${formatDate(p.timestamp)}</td>
+          <td>${p.storeChain}</td>
+          <td>${p.storeName}</td>
+          <td>${p.type || '-'}</td>
+          <td>${p.itemName}</td>
+          <td>${p.stemsCount || '-'}</td>
+          <td>${p.vaseDiameter || '-'}</td>
+          <td class="price-cell">€ ${parseFloat(p.priceValue).toFixed(2)}</td>
+          <td>${p.supplierName || '-'}</td>
+          <td>${p.eanCode || '-'}</td>
+          <td>${p.notes || '-'}</td>
+          <td class="edit-btn-cell action-cell">
+            <button class="icon-btn edit-btn" title="Modifica" data-index="${i}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+          </td>
+          <td class="delete-btn-cell">
+            <button class="delete-btn" data-index="${i}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+            </button>
+          </td>`;
+        priceReportTable.appendChild(tr);
+      });
+    }
+
+    function resetProductAndPriceFields(){
+      itemNameInput.value=''; stemsCountInput.value=''; vaseDiameterInput.value='';
+      priceValueInput.value=''; supplierNameInput.value=''; eanCodeInput.value=''; notesInput.value='';
+      stemsGroup.classList.remove('hidden'); vaseGroup.classList.remove('hidden'); itemNameInput.removeAttribute('list');
+      if(currentType==='Mazzo'){ vaseGroup.classList.add('hidden'); itemNameInput.setAttribute('list','cutFlowersList'); }
+      else if(currentType==='Pianta'){ stemsGroup.classList.add('hidden'); itemNameInput.setAttribute('list','plantList'); }
+    }
+    function resetAllFields(){
+      storeChainInput.value=''; storeNameInput.value=''; resetProductAndPriceFields(); currentType=null; saveLastSelectedType(null);
+      bouquetFlag.classList.remove('active'); plantFlag.classList.remove('active');
+    }
+    function setProductType(type){
+      currentType = type; saveLastSelectedType(type);
+      if(type==='Mazzo'){ bouquetFlag.classList.add('active'); plantFlag.classList.remove('active'); stemsGroup.classList.remove('hidden'); vaseGroup.classList.add('hidden'); itemNameInput.setAttribute('list','cutFlowersList'); }
+      else if(type==='Pianta'){ bouquetFlag.classList.remove('active'); plantFlag.classList.add('active'); stemsGroup.classList.add('hidden'); vaseGroup.classList.remove('hidden'); itemNameInput.setAttribute('list','plantList'); }
+      else { bouquetFlag.classList.remove('active'); plantFlag.classList.remove('active'); stemsGroup.classList.remove('hidden'); vaseGroup.classList.remove('hidden'); itemNameInput.removeAttribute('list'); }
+    }
+
+    /* Scanner EAN */
+    function startScanner(){
+      qrReaderContainer.style.display='flex';
+      scannerStatus.textContent="Caricamento fotocamera...";
+      html5QrCode = new Html5Qrcode("qr-reader");
+      const config = {
+        fps:10, qrbox:{ width:300, height:150 },
+        formatsToSupport:[
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ]
+      };
+      html5QrCode.start({ facingMode:"environment" }, config,
+        decodedText => { beepSound.play(); eanCodeInput.value=decodedText; stopScanner(); showToast('EAN acquisito!'); },
+        () => {}
+      ).catch(err => { console.error('Camera error',err); stopScanner(); showToast('Errore: controlla i permessi fotocamera.'); });
+    }
+    function stopScanner(){
+      if(html5QrCode && html5QrCode.isScanning){
+        html5QrCode.stop().then(()=>{ qrReaderContainer.style.display='none'; scannerStatus.textContent=""; })
+        .catch(()=>{ qrReaderContainer.style.display='none'; scannerStatus.textContent=""; });
+      } else { qrReaderContainer.style.display='none'; scannerStatus.textContent=""; }
+    }
+
+    /* Lookup Fornitore */
+    function openSupplierLookup(){
+      const v = (eanCodeInput.value||'').trim();
+      let guess=''; if(v.length>=6) guess = v.substring(0, Math.min(9, v.length));
+      lookupSearchInput.value = guess;
+      renderLookupTable(guess);
+      supplierLookupContainer.style.display='flex';
+    }
+    function closeSupplierLookup(){ supplierLookupContainer.style.display='none'; }
+    function renderLookupTable(term=''){
+      const q = (term||'').toLowerCase();
+      const rows = SUPPLIER_FROM_EAN_ROOTS.filter(r => r.root.toLowerCase().includes(q) || r.supplier.toLowerCase().includes(q));
+      lookupTableBody.innerHTML='';
+      if(rows.length===0){ lookupEmpty.classList.remove('hidden'); return; }
+      lookupEmpty.classList.add('hidden');
+      rows.forEach(({root,supplier})=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${root}</td>
+          <td>${supplier}</td>
+          <td><button class="lookup-select-btn" data-supplier="${escapeHtml(supplier)}">Seleziona</button></td>`;
+        lookupTableBody.appendChild(tr);
+      });
+    }
+
+    /* Listeners */
+    bouquetFlag.addEventListener('click', ()=>setProductType('Mazzo'));
+    plantFlag.addEventListener('click', ()=>setProductType('Pianta'));
+
+    cameraScanBtn.addEventListener('click', startScanner);
+    closeScannerBtn.addEventListener('click', stopScanner);
+
+    supplierLookupBtn.addEventListener('click', openSupplierLookup);
+    lookupCloseBtn.addEventListener('click', closeSupplierLookup);
+    lookupSearchInput.addEventListener('input', e => renderLookupTable(e.target.value));
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='Escape'){
+        if(qrReaderContainer.style.display==='flex') stopScanner();
+        if(supplierLookupContainer.style.display==='flex') closeSupplierLookup();
+      }
+    });
+    lookupTableBody.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.lookup-select-btn'); if(!btn) return;
+      supplierNameInput.value = btn.getAttribute('data-supplier') || '';
+      closeSupplierLookup();
+      showToast('Acquisizione fornitore avvenuta con successo!');
+    });
+
+    // Salva record
+    saveBtn.addEventListener('click', ()=>{
+      if(!storeChainInput.value || !storeNameInput.value || !itemNameInput.value || !priceValueInput.value || !currentType){
+        validationError.textContent = "Si prega di compilare tutti i campi obbligatori.";
+        validationError.classList.remove('hidden'); return;
+      }
+      if(!eanCodeInput.value && !supplierNameInput.value){
+        validationError.textContent = "Si prega di inserire un Codice a Barre (EAN) o un Fornitore.";
+        validationError.classList.remove('hidden'); return;
+      }
+      validationError.classList.add('hidden');
+      const rec = {
+        id: Date.now(), timestamp: new Date(),
+        storeChain: storeChainInput.value, storeName: storeNameInput.value,
+        type: currentType, itemName: itemNameInput.value,
+        stemsCount: currentType==='Mazzo' ? stemsCountInput.value : null,
+        vaseDiameter: currentType==='Pianta' ? vaseDiameterInput.value : null,
+        priceValue: priceValueInput.value, supplierName: supplierNameInput.value,
+        eanCode: eanCodeInput.value, notes: notesInput.value
+      };
+      prices.push(rec); saveData(); renderTable(); resetProductAndPriceFields(); showToast('Dati registrati!');
+    });
+
+    // Azioni tabella
+    priceReportTable.addEventListener('click', (e)=>{
+      const del = e.target.closest('.delete-btn');
+      const edit = e.target.closest('.edit-btn');
+      const saveRow = e.target.closest('.row-save-btn');
+      const cancelRow = e.target.closest('.row-cancel-btn');
+
+      if(del){
+        const idx = del.dataset.index;
+        document.getElementById('dialogMessage').textContent = 'Sei sicuro di voler eliminare questo elemento?';
+        confirmBtn.textContent='Elimina';
+        confirmBtn.classList.add('bg-red-500','hover:bg-red-600');
+        confirmBtn.classList.remove('bg-blue-600','hover:bg-blue-700');
+        cancelBtn.style.display='inline-block';
+        confirmationDialog.classList.add('show');
+        dialogAction = ()=>{
+          prices.splice(idx,1); saveData(); renderTable(); confirmationDialog.classList.remove('show'); showToast('Elemento eliminato!');
+        };
+        return;
+      }
+      if(edit){ enterEditMode(Number(edit.dataset.index)); return; }
+      if(saveRow){ saveRowEdits(Number(saveRow.dataset.index)); return; }
+      if(cancelRow){ cancelEditMode(); return; }
+    });
+
+    function enterEditMode(index){
+      if(currentEditIndex!==null) return;
+      currentEditIndex = index;
+      const row = priceReportTable.querySelector(`tr[data-index="${index}"]`); if(!row) return;
+      const r = prices[index];
+      row.innerHTML = `
+        <td>${formatDate(r.timestamp)}</td>
+        <td><input class="inline-input" type="text" value="${escapeHtml(r.storeChain||'')}"></td>
+        <td><input class="inline-input" type="text" value="${escapeHtml(r.storeName||'')}"></td>
+        <td><input class="inline-input" type="text" value="${escapeHtml(r.type||'')}" placeholder="Mazzo / Pianta"></td>
+        <td><input class="inline-input" type="text" value="${escapeHtml(r.itemName||'')}"></td>
+        <td><input class="inline-input" type="number" step="1" value="${r.stemsCount!=null?r.stemsCount:''}" placeholder="-"></td>
+        <td><input class="inline-input" type="number" step="0.1" value="${r.vaseDiameter!=null?r.vaseDiameter:''}" placeholder="-"></td>
+        <td><input class="inline-input" type="number" step="0.01" value="${r.priceValue!=null?r.priceValue:''}"></td>
+        <td><input class="inline-input" type="text" value="${escapeHtml(r.supplierName||'')}" placeholder="-"></td>
+        <td><input class="inline-input" type="text" value="${escapeHtml(r.eanCode||'')}" placeholder="-"></td>
+        <td><input class="inline-input" type="text" value="${escapeHtml(r.notes||'')}" placeholder="-"></td>
+        <td class="action-cell">
+          <button class="icon-btn row-save-btn" title="Salva" data-index="${index}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>
+          </button>
+        </td>
+        <td class="action-cell">
+          <button class="icon-btn row-cancel-btn" title="Annulla">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </td>`;
+    }
+    function cancelEditMode(){ if(currentEditIndex===null) return; renderTable(); currentEditIndex=null; }
+    function saveRowEdits(index){
+      const row = priceReportTable.querySelector(`tr[data-index="${index}"]`); if(!row) return;
+      const inputs = row.querySelectorAll('input.inline-input');
+      const updated = {
+        ...prices[index],
+        storeChain: inputs[0].value.trim(),
+        storeName: inputs[1].value.trim(),
+        type: inputs[2].value.trim(),
+        itemName: inputs[3].value.trim(),
+        stemsCount: inputs[4].value===''?null:Number(inputs[4].value),
+        vaseDiameter: inputs[5].value===''?null:Number(inputs[5].value),
+        priceValue: inputs[6].value===''?null:Number(inputs[6].value),
+        supplierName: inputs[7].value.trim(),
+        eanCode: inputs[8].value.trim(),
+        notes: inputs[9].value.trim()
+      };
+      if(!updated.storeChain || !updated.storeName || !updated.itemName || updated.priceValue===null || !updated.type){ showToast('Compila i campi obbligatori.'); return; }
+      if(!updated.eanCode && !updated.supplierName){ showToast('Inserisci EAN o Fornitore.'); return; }
+      if(updated.type==='Mazzo') updated.vaseDiameter=null; else if(updated.type==='Pianta') updated.stemsCount=null;
+      prices[index]=updated; saveData(); renderTable(); currentEditIndex=null; showToast('Modifica effettuata!');
+    }
+
+    // Export
+    exportExcelBtn.addEventListener('click', async ()=>{
+      if(prices.length===0){
+        document.getElementById('dialogMessage').textContent="Nessun dato da esportare!";
+        confirmBtn.textContent='OK';
+        confirmBtn.classList.remove('bg-red-500','hover:bg-red-600');
+        confirmBtn.classList.add('bg-blue-600','hover:bg-blue-700');
+        cancelBtn.style.display='none';
+        confirmationDialog.classList.add('show');
+        dialogAction = ()=> confirmationDialog.classList.remove('show');
+        return;
+      }
+      document.getElementById('dialogMessage').textContent="L'esportazione cancellerà i dati dall'anteprima. Vuoi procedere?";
+      confirmBtn.textContent='Esporta e Cancella';
+      confirmBtn.classList.remove('bg-red-500','hover:bg-red-600');
+      confirmBtn.classList.add('bg-blue-600','hover:bg-blue-700');
+      cancelBtn.style.display='inline-block';
+      confirmationDialog.classList.add('show');
+      dialogAction = async ()=>{
+        confirmationDialog.classList.remove('show');
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet('Dati');
+        ws.columns = [
+          { header:'Data', key:'Data', width:15 },
+          { header:'Catena', key:'Catena', width:20 },
+          { header:'Negozio', key:'Negozio', width:20 },
+          { header:'Tipologia', key:'Tipologia', width:15 },
+          { header:'Articolo', key:'Articolo', width:30 },
+          { header:'N° Steli', key:'Steli', width:12 },
+          { header:'Vaso', key:'Vaso', width:10 },
+          { header:'Prezzo', key:'Prezzo', width:15 },
+          { header:'Fornitore', key:'Fornitore', width:25 },
+          { header:'Codice a Barre (Ean)', key:'Codice', width:25 },
+          { header:'Note', key:'Note', width:40 }
+        ];
+        ws.getRow(1).font = { bold:true };
+        ws.getRow(1).alignment = { horizontal:'left' };
+        prices.forEach(it=>{
+          const r = ws.addRow({
+            Data: formatDate(it.timestamp)||'-',
+            Catena: it.storeChain||'-',
+            Negozio: it.storeName||'-',
+            Tipologia: it.type||'-',
+            Articolo: it.itemName||'-',
+            Steli: it.stemsCount!=null?parseFloat(it.stemsCount):'-',
+            Vaso: it.vaseDiameter!=null?parseFloat(it.vaseDiameter):'-',
+            Prezzo: it.priceValue!=null?parseFloat(it.priceValue):'-',
+            Fornitore: it.supplierName||'-',
+            Codice: it.eanCode||'-',
+            Note: it.notes||'-'
+          });
+          r.getCell('Data').numFmt = 'dd/mm/yyyy';
+          r.getCell('Data').alignment = { horizontal:'left' };
+          r.getCell('Steli').alignment = { horizontal:'right' };
+          r.getCell('Vaso').alignment = { horizontal:'right' };
+          r.getCell('Prezzo').alignment = { horizontal:'right' };
+          r.getCell('Prezzo').numFmt = '#,##0.00';
+          r.getCell('Vaso').numFmt = '0.0';
+          r.getCell('Codice').numFmt = '@';
         });
-        
-        priceReportTable.addEventListener('click', (e) => {
-            const deleteBtnEl = e.target.closest('.delete-btn');
-            const editBtnEl = e.target.closest('.edit-btn');
-            const saveBtnEl = e.target.closest('.row-save-btn');
-            const cancelBtnEl = e.target.closest('.row-cancel-btn');
+        const buf = await wb.xlsx.writeBuffer();
+        const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url;
+        const today=new Date(), dd=String(today.getDate()).padStart(2,'0'), mm=String(today.getMonth()+1).padStart(2,'0'), yy=String(today.getFullYear()).slice(-2);
+        const chain=(storeChainInput.value||'SenzaCatena').replace(/\s+/g,'_');
+        const shop=(storeNameInput.value||'SenzaNegozio').replace(/\s+/g,'_');
+        a.download=`Rilevamento_${chain}_${shop}_${dd}_${mm}_${yy}.xlsx`;
+        document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); a.remove();
+        prices=[]; saveData(); renderTable(); showToast('Esportazione riuscita! Dati cancellati.'); resetAllFields();
+      };
+    });
 
-            if (deleteBtnEl) {
-                const index = deleteBtnEl.dataset.index;
-                document.getElementById('dialogMessage').textContent = 'Sei sicuro di voler eliminare questo elemento?';
-                confirmBtn.textContent = 'Elimina';
-                confirmBtn.classList.add('bg-red-500', 'hover:bg-red-600');
-                confirmBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                cancelBtn.style.display = 'inline-block';
-                confirmationDialog.classList.add('show');
-                dialogAction = () => {
-                    prices.splice(index, 1);
-                    saveData();
-                    renderTable();
-                    confirmationDialog.classList.remove('show');
-                    showToast('Elemento eliminato!');
-                };
-                return;
-            }
+    // Conferma dialog
+    confirmBtn.addEventListener('click', ()=>{ if(dialogAction) dialogAction(); });
+    cancelBtn.addEventListener('click', ()=> confirmationDialog.classList.remove('show'));
 
-            if (editBtnEl) {
-                const index = Number(editBtnEl.dataset.index);
-                enterEditMode(index);
-                return;
-            }
+    // Ricerca generale
+    searchInput.addEventListener('input', (e)=>{
+      const term = e.target.value.toLowerCase();
+      const filtered = prices.filter(p => Object.values(p).some(v => String(v).toLowerCase().includes(term)));
+      renderTable(filtered);
+    });
 
-            if (saveBtnEl) {
-                const index = Number(saveBtnEl.dataset.index);
-                saveRowEdits(index);
-                return;
-            }
-
-            if (cancelBtnEl) {
-                cancelEditMode();
-                return;
-            }
-        });
-
-        function enterEditMode(index) {
-            if (currentEditIndex !== null) return; // già in modifica
-            currentEditIndex = index;
-            originalEditSnapshot = JSON.parse(JSON.stringify(prices[index]));
-
-            const row = priceReportTable.querySelector(`tr[data-index="${index}"]`);
-            if (!row) return;
-
-            const record = prices[index];
-
-            // Costruisci input inline (manteniamo Data non modificabile)
-            row.innerHTML = `
-                <td>${formatDate(record.timestamp)}</td>
-                <td><input class="inline-input" type="text" value="${escapeHtml(record.storeChain || '')}"></td>
-                <td><input class="inline-input" type="text" value="${escapeHtml(record.storeName || '')}"></td>
-                <td><input class="inline-input" type="text" value="${escapeHtml(record.type || '')}" placeholder="Mazzo / Pianta"></td>
-                <td><input class="inline-input" type="text" value="${escapeHtml(record.itemName || '')}"></td>
-                <td><input class="inline-input" type="number" step="1" value="${record.stemsCount != null ? record.stemsCount : ''}" placeholder="-"></td>
-                <td><input class="inline-input" type="number" step="0.1" value="${record.vaseDiameter != null ? record.vaseDiameter : ''}" placeholder="-"></td>
-                <td><input class="inline-input" type="number" step="0.01" value="${record.priceValue != null ? record.priceValue : ''}"></td>
-                <td><input class="inline-input" type="text" value="${escapeHtml(record.supplierName || '')}" placeholder="-"></td>
-                <td><input class="inline-input" type="text" value="${escapeHtml(record.eanCode || '')}" placeholder="-"></td>
-                <td><input class="inline-input" type="text" value="${escapeHtml(record.notes || '')}" placeholder="-"></td>
-                <td class="edit-btn-cell action-cell">
-                    <button class="icon-btn row-save-btn" title="Salva" data-index="${index}">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"/></svg>
-                    </button>
-                </td>
-                <td class="delete-btn-cell action-cell">
-                    <button class="icon-btn row-cancel-btn" title="Annulla">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-                    </button>
-                </td>
-            `;
-        }
-
-        function cancelEditMode() {
-            if (currentEditIndex === null) return;
-            // Ripristina la riga originale
-            renderTable();
-            currentEditIndex = null;
-            originalEditSnapshot = null;
-        }
-
-        function saveRowEdits(index) {
-            const row = priceReportTable.querySelector(`tr[data-index="${index}"]`);
-            if (!row) return;
-
-            const inputs = row.querySelectorAll('input.inline-input');
-            // Mappa: 0 storeChain, 1 storeName, 2 type, 3 itemName, 4 stemsCount, 5 vaseDiameter, 6 priceValue, 7 supplierName, 8 eanCode, 9 notes
-            const updated = {
-                ...prices[index],
-                storeChain: inputs[0].value.trim(),
-                storeName: inputs[1].value.trim(),
-                type: inputs[2].value.trim(),
-                itemName: inputs[3].value.trim(),
-                stemsCount: inputs[4].value === '' ? null : Number(inputs[4].value),
-                vaseDiameter: inputs[5].value === '' ? null : Number(inputs[5].value),
-                priceValue: inputs[6].value === '' ? null : Number(inputs[6].value),
-                supplierName: inputs[7].value.trim(),
-                eanCode: inputs[8].value.trim(),
-                notes: inputs[9].value.trim()
-            };
-
-            // Validazioni minime come nel salvataggio
-            if (!updated.storeChain || !updated.storeName || !updated.itemName || updated.priceValue === null || !updated.type) {
-                showToast('Compila i campi obbligatori.');
-                return;
-            }
-            if (!updated.eanCode && !updated.supplierName) {
-                showToast('Inserisci EAN o Fornitore.');
-                return;
-            }
-
-            // Normalizza in base al tipo (coerente con inserimento)
-            if (updated.type === 'Mazzo') {
-                updated.vaseDiameter = null;
-            } else if (updated.type === 'Pianta') {
-                updated.stemsCount = null;
-            }
-
-            prices[index] = updated;
-            saveData();
-            renderTable();
-            currentEditIndex = null;
-            originalEditSnapshot = null;
-            showToast('Modifica effettuata!');
-        }
-
-        function escapeHtml(str) {
-            return String(str)
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#039;');
-        }
-        
-        exportExcelBtn.addEventListener('click', async () => {
-            if (prices.length === 0) {
-                document.getElementById('dialogMessage').textContent = "Nessun dato da esportare!";
-                confirmBtn.textContent = 'OK';
-                confirmBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-                confirmBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-                cancelBtn.style.display = 'none';
-                confirmationDialog.classList.add('show');
-                dialogAction = () => {
-                    confirmationDialog.classList.remove('show');
-                };
-                return;
-            }
-        
-            document.getElementById('dialogMessage').textContent = "L'esportazione cancellerà i dati dall'anteprima. Vuoi procedere?";
-            confirmBtn.textContent = 'Esporta e Cancella';
-            confirmBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
-            confirmBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
-            cancelBtn.style.display = 'inline-block';
-            confirmationDialog.classList.add('show');
-            dialogAction = async () => {
-                confirmationDialog.classList.remove('show');
-        
-                const workbook = new ExcelJS.Workbook();
-                const worksheet = workbook.addWorksheet('Dati');
-        
-                worksheet.columns = [
-                    { header: 'Data', key: 'Data', width: 15 },
-                    { header: 'Catena', key: 'Catena', width: 20 },
-                    { header: 'Negozio', key: 'Negozio', width: 20 },
-                    { header: 'Tipologia', key: 'Tipologia', width: 15 },
-                    { header: 'Articolo', key: 'Articolo', width: 30 },
-                    { header: 'N° Steli', key: 'Steli', width: 12 },
-                    { header: 'Vaso', key: 'Vaso', width: 10 },
-                    { header: 'Prezzo', key: 'Prezzo', width: 15 },
-                    { header: 'Fornitore', key: 'Fornitore', width: 25 },
-                    { header: 'Codice a Barre (Ean)', key: 'Codice', width: 25 },
-                    { header: 'Note', key: 'Note', width: 40 }
-                ];
-        
-                worksheet.getRow(1).font = { bold: true };
-                worksheet.getRow(1).alignment = { horizontal: 'left' };
-        
-                prices.forEach(item => {
-                    const row = worksheet.addRow({
-                        Data: formatDate(item.timestamp) || '-',
-                        Catena: item.storeChain || '-',
-                        Negozio: item.storeName || '-',
-                        Tipologia: item.type || '-',
-                        Articolo: item.itemName || '-',
-                        Steli: (item.stemsCount !== undefined && item.stemsCount !== null) ? parseFloat(item.stemsCount) : '-',
-                        Vaso: (item.vaseDiameter !== undefined && item.vaseDiameter !== null) ? parseFloat(item.vaseDiameter) : '-',
-                        Prezzo: (item.priceValue !== undefined && item.priceValue !== null) ? parseFloat(item.priceValue) : '-',
-                        Fornitore: item.supplierName || '-',
-                        Codice: item.eanCode || '-',
-                        Note: item.notes || '-'
-                    });
-        
-                    row.getCell('Data').numFmt = 'dd/mm/yyyy';
-                    row.getCell('Data').alignment = { horizontal: 'left' };
-        
-                    row.getCell('Steli').alignment = { horizontal: 'right' };
-                    row.getCell('Vaso').alignment = { horizontal: 'right' };
-                    row.getCell('Prezzo').alignment = { horizontal: 'right' };
-                    row.getCell('Prezzo').numFmt = '#,##0.00';
-                    row.getCell('Vaso').numFmt = '0.0';
-        
-                    row.getCell('Codice').numFmt = '@';
-                });
-        
-                const buffer = await workbook.xlsx.writeBuffer();
-                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-                const url = window.URL.createObjectURL(blob);
-        
-                const a = document.createElement('a');
-                a.href = url;
-                
-                // Genera il nome del file dinamico
-                const today = new Date();
-                const day = String(today.getDate()).padStart(2, '0');
-                const month = String(today.getMonth() + 1).padStart(2, '0');
-                const year = String(today.getFullYear()).slice(-2);
-                const chainName = (storeChainInput.value || 'SenzaCatena').replace(/\s+/g, '_');
-                const storeName = (storeNameInput.value || 'SenzaNegozio').replace(/\s+/g, '_');
-                const filename = `Rilevamento_${chainName}_${storeName}_${day}_${month}_${year}.xlsx`;
-                
-                a.download = filename;
-                
-                document.body.appendChild(a);
-                a.click();
-                
-                window.URL.revokeObjectURL(url);
-                document.body.removeChild(a);
-        
-                prices = [];
-                saveData();
-                renderTable();
-                showToast('Esportazione riuscita! Dati cancellati.');
-                resetAllFields();
-            };
-        });
-        
-        confirmBtn.addEventListener('click', () => {
-            if (dialogAction) {
-                dialogAction();
-            }
-        });
-        
-        cancelBtn.addEventListener('click', () => {
-            confirmationDialog.classList.remove('show');
-        });
-
-        bouquetFlag.addEventListener('click', () => setProductType('Mazzo'));
-        plantFlag.addEventListener('click', () => setProductType('Pianta'));
-        cameraScanBtn.addEventListener('click', startScanner);
-        closeScannerBtn.addEventListener('click', () => {
-            stopScanner();
-        });
-
-        searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredPrices = prices.filter(price => {
-                return Object.values(price).some(value => 
-                    String(value).toLowerCase().includes(searchTerm)
-                );
-            });
-            renderTable(filteredPrices);
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
-            loadLastSelectedType();
-        });
-    </script>
+    // Init
+    document.addEventListener('DOMContentLoaded', ()=>{ loadData(); loadLastSelectedType(); });
+  </script>
 </body>
 </html>
